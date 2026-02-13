@@ -121,4 +121,5 @@ const MenuItem = ({ path, icon: IconComp, label }) => {
     );
 };
 
+
 export default SidebarUser;
