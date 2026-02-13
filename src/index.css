@@ -1,0 +1,63 @@
+@import "tailwindcss";
+@plugin "daisyui";
+@import url('https://fonts.googleapis.com/css2?family=Graduate&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+
+/* =========================
+   GLOBAL RESET & FONDASI
+   ========================= */
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  /* GRADIENT */
+  background: #406e43;
+  background: linear-gradient(0deg, rgba(64, 110, 67, 1) 0%, rgba(58, 105, 63, 1) 11%, rgba(54, 102, 60, 1) 19%, rgba(50, 99, 58, 1) 26%, rgba(48, 97, 57, 1) 30%, rgba(48, 93, 56, 1) 41%, rgba(48, 90, 56, 1) 49%, rgba(48, 87, 55, 1) 58%, rgba(45, 83, 53, 1) 66%, rgba(43, 80, 52, 1) 73%, rgba(41, 77, 50, 1) 80%, rgba(44, 68, 53, 1) 90%, rgba(46, 63, 55, 1) 96%, rgba(48, 59, 56, 1) 100%);
+
+  color: rgba(255, 255, 255, 0.9);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Utility for Brand Font */
+.font-graduate {
+  font-family: "Graduate", serif;
+}
+
+/* =========================
+   DEFAULT ELEMENT STYLE
+   ========================= */
+a {
+  font-weight: 500;
+  color: #eafff1;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #d1fae5;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+
+/* =========================
+   LIGHT MODE SUPPORT
+   ========================= */
+@media (prefers-color-scheme: light) {
+  body {
+    color: #0f172a;
+  }
+}
