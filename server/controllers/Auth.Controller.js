@@ -86,6 +86,29 @@ const updateUser = async (req, res) => {
     }
 };
 
+const uploadPhoto = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!req.file) {
+            return res.status(400).json({ message: 'File tidak ditemukan' });
+        }
+
+        await db.execute(
+            `UPDATE pengguna SET foto = ? WHERE id = ?`,
+            [req.file.filename, id]
+        );
+
+        res.json({
+            message: 'Foto berhasil diupload',
+            file: req.file.filename
+        });
+
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -150,6 +173,7 @@ module.exports = {
     register,
     createAdmin,
     updateUser,
+    uploadPhoto,
     login,
     logout
 };

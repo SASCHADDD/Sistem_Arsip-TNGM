@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/Auth.Controller');
 const { verifyToken, authorizeRoles } = require('../middlewares/Auth.Middleware');
+const upload = require('../middlewares/uploadProfile');
 
 router.post('/register', authController.register);
 
@@ -20,6 +21,13 @@ router.put(
   verifyToken,
   authorizeRoles('admin_balai'),
   authController.updateUser
+);
+
+router.put(
+  '/upload-photo/:id',
+  verifyToken,
+  upload.single('foto'),
+  authController.uploadPhoto
 );
 
 
