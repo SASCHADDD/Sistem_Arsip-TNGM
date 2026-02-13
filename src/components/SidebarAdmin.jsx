@@ -58,10 +58,12 @@ const SidebarAdmin = ({ children }) => {
 
                     {/* User Profile Section */}
                     <div className="px-6 mb-8">
-                        <p className="font-semibold text-green-900 line-clamp-1" title={JSON.parse(localStorage.getItem('user'))?.nama || 'Admin Balai'}>
-                            {JSON.parse(localStorage.getItem('user'))?.nama || 'Admin Balai'}
+                        <p className="font-semibold text-green-900 line-clamp-1" title={JSON.parse(localStorage.getItem('user'))?.nama || 'Admin'}>
+                            {JSON.parse(localStorage.getItem('user'))?.nama || 'Admin'}
                         </p>
-                        <p className="text-xs text-green-800">Administrator</p>
+                        <p className="text-xs text-green-800">
+                            {JSON.parse(localStorage.getItem('user'))?.role === 'admin_wilayah' ? 'Admin Wilayah' : 'Administrator'}
+                        </p>
                     </div>
 
                     {/* Menu Items */}
@@ -76,11 +78,13 @@ const SidebarAdmin = ({ children }) => {
                             icon={FileCheck}
                             label="Verifikasi Laporan"
                         />
-                        <MenuItem
-                            path="/admin/manajemen-akun"
-                            icon={Users}
-                            label="Manajemen Akun"
-                        />
+                        {JSON.parse(localStorage.getItem('user'))?.role === 'admin_balai' && (
+                            <MenuItem
+                                path="/admin/manajemen-akun"
+                                icon={Users}
+                                label="Manajemen Akun"
+                            />
+                        )}
                         <MenuItem
                             path="/admin/DataLaporan"
                             icon={FileText}
