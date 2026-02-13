@@ -15,5 +15,12 @@ router.post(
     authorizeRoles('admin_balai'),
     authController.createAdmin
 );
+router.put(
+  '/update-user/:id',
+  verifyToken,
+  authorizeRoles('admin_balai'),
+  authController.updateUser
+);
+
 
 module.exports = router;

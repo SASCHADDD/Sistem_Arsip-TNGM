@@ -67,6 +67,24 @@ const createAdmin = async (req, res) => {
         res.status(500).json({ error: 'Terjadi kesalahan pada server' });
     }
 };
+const updateUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { wilayah_id, resor_id } = req.body;
+
+        await db.execute(
+            `UPDATE pengguna 
+             SET wilayah_id = ?, resor_id = ?
+             WHERE id = ?`,
+            [wilayah_id, resor_id, id]
+        );
+
+        res.json({ message: 'User berhasil diupdate' });
+
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+};
 
 const login = async (req, res) => {
     try {
@@ -131,6 +149,7 @@ const logout = (req, res) => {
 module.exports = {
     register,
     createAdmin,
+    updateUser,
     login,
     logout
 };
