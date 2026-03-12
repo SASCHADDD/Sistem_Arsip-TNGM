@@ -1,4 +1,4 @@
-//                                        tidak perlu lagi karna bukan untuk reload 
+// tidak perlu lagi karna bukan untuk reload 
 // import { useNavigate } from "react-router-dom"
 
 
@@ -36,7 +36,7 @@ const Landing = () => {
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
-      <div className="text-center max-w-5xl mx-auto px-6 text-white/90 my-12">
+      <div className="text-center max-w-5xl mx-auto px-6 text-slate-600 my-12">
         <p className="text-lg md:text-xl font-normal leading-relaxed">
           Sistem ini dirancang untuk mendukung pengelolaan dokumen dan data secara terstruktur, aman, dan terintegrasi di lingkungan TNGM.
           Melalui sistem ini, proses penyimpanan, pencarian, dan distribusi dokumen dapat dilakukan secara lebih cepat, akurat, dan efisien, sehingga meminimalkan risiko kehilangan data serta meningkatkan transparansi dan akuntabilitas pengelolaan informasi.
@@ -57,7 +57,7 @@ const Landing = () => {
 
               {/* Divider (dekstop)*/}
               {index < cards.length - 1 && (
-                <div className="hidden md:block w-px h-100 bg-white/40 self-center rounded-full"></div>
+                <div className="hidden md:block w-px h-100 bg-slate-200 self-center rounded-full"></div>
               )}
             </div>
           ))}

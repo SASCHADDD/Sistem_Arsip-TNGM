@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/Auth.Controller');
 const { verifyToken, authorizeRoles } = require('../middlewares/Auth.Middleware');
-const upload = require('../middlewares/uploadProfile');
+const configureUpload = require('../middlewares/Upload.Middleware');
+const uploadProfile = configureUpload('profile');
 
 router.post('/register', authController.register);
 
@@ -10,11 +11,12 @@ router.post('/login', authController.login);
 
 router.post('/logout', authController.logout);
 
+
 router.post(
-    '/create-admin',
-    verifyToken,
-    authorizeRoles('admin_balai'),
-    authController.createAdmin
+  '/create-admin',
+  verifyToken,
+  authorizeRoles('admin_balai'),
+  authController.createAdmin
 );
 router.put(
   '/update-user/:id',
@@ -26,8 +28,14 @@ router.put(
 router.put(
   '/upload-photo/:id',
   verifyToken,
-  upload.single('foto'),
+  uploadProfile.single('foto'),
   authController.uploadPhoto
+);
+
+router.put(
+  '/change-password',
+  verifyToken,
+  authController.changePassword
 );
 
 

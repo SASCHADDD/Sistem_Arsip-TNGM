@@ -2,6 +2,7 @@ import { useState } from "react";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import { UploadCloud, Camera, Image, FileText, Handshake, User, Building, Mail, FileCheck, List, MapPin, Send, RotateCcw, Type } from "lucide-react";
+import Swal from 'sweetalert2';
 
 const Mitra = () => {
     const [formData, setFormData] = useState({
@@ -20,6 +21,7 @@ const Mitra = () => {
 
     const [dragActive, setDragActive] = useState(false);
     const [dragActiveHardfile, setDragActiveHardfile] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -76,11 +78,60 @@ const Mitra = () => {
         }
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log("Form Data Mitra:", formData);
-        alert("Laporan Mitra berhasil dikirim! Terima kasih atas kerjasama Anda.");
-        handleReset();
+
+        if (!formData.file || !formData.hardfile) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Opps...',
+                text: 'Harap lampirkan dokumen laporan dan foto dokumentasi kegiatan.'
+            });
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        const submitData = new FormData();
+        Object.keys(formData).forEach(key => {
+            if (formData[key]) {
+                submitData.append(key, formData[key]);
+            }
+        });
+
+        try {
+            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+            const response = await fetch(`${baseUrl}/laporan/submit-mitra`, {
+                method: 'POST',
+                body: submitData
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: 'Laporan Mitra Anda telah berhasil dikirim.'
+                });
+                handleReset();
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: data.message || 'Terjadi kesalahan saat mengirim laporan.'
+                });
+            }
+        } catch (error) {
+            console.error('Error submitting form:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Koneksi ke server gagal. Pastikan koneksi internet Anda stabil.'
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleReset = () => {
@@ -304,7 +355,7 @@ const Mitra = () => {
                                                 <p className="text-xs text-gray-500 mt-1">atau drag & drop dokumen di sini</p>
                                             </div>
                                             <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">
-                                                PDF, DOC, DOCX (Max 10MB)
+                                                PDF, DOC, DOCX (Max 2MB)
                                             </p>
                                         </label>
                                     )}
@@ -366,7 +417,7 @@ const Mitra = () => {
                                                 <p className="text-xs text-gray-500 mt-1">atau drag & drop foto di sini</p>
                                             </div>
                                             <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">
-                                                Format: JPG, PNG, JPEG (Max 5MB)
+                                                Format: JPG, PNG, JPEG (Max 2MB)
                                             </p>
                                         </label>
                                     )}
@@ -394,6 +445,7 @@ const Mitra = () => {
                             <button
                                 type="button"
                                 onClick={handleReset}
+                                disabled={isSubmitting}
                                 className="btn btn-ghost text-gray-500 hover:text-gray-700 hover:bg-gray-100 gap-2 font-normal"
                             >
                                 <RotateCcw size={18} />
@@ -401,10 +453,20 @@ const Mitra = () => {
                             </button>
                             <button
                                 type="submit"
-                                className="btn bg-[#1B5E20] hover:bg-[#154a19] text-white border-none gap-2 px-8 shadow-sm hover:shadow transition-all"
+                                disabled={isSubmitting}
+                                className="btn bg-[#1B5E20] hover:bg-[#154a19] text-white border-none gap-2 px-8 shadow-sm hover:shadow transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                             >
-                                <Send size={18} />
-                                Kirim Laporan Mitra
+                                {isSubmitting ? (
+                                    <>
+                                        <span className="loading loading-spinner loading-sm"></span>
+                                        Mengirim...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Send size={18} />
+                                        Kirim Laporan Mitra
+                                    </>
+                                )}
                             </button>
                         </div>
                     </form>

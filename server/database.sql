@@ -35,9 +35,7 @@ CREATE TABLE `resor` (
 CREATE TABLE `kategori` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `nama_kategori` varchar(100) NOT NULL,
-  `kode_kategori` varchar(50) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `kode_kategori` (`kode_kategori`)
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -52,6 +50,7 @@ CREATE TABLE `pengguna` (
   `role` enum('superadmin','admin','user') NOT NULL DEFAULT 'user',
   `wilayah_id` int(11) DEFAULT NULL,
   `resor_id` int(11) DEFAULT NULL,
+  `foto` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
   KEY `fk_pengguna_wilayah` (`wilayah_id`),
@@ -145,6 +144,57 @@ CREATE TABLE `laporan_eksternal` (
   CONSTRAINT `fk_laporan_wilayah` FOREIGN KEY (`wilayah_id`) REFERENCES `wilayah` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_laporan_resor` FOREIGN KEY (`resor_id`) REFERENCES `resor` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_laporan_verifikator` FOREIGN KEY (`diverifikasi_oleh`) REFERENCES `pengguna` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `laporan_internal`
+--
+
+CREATE TABLE `laporan_internal` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    
+    `judul` VARCHAR(255) NOT NULL,
+    `jenis_laporan` ENUM('A','B') NOT NULL,
+    
+    `tanggal_berakhir` DATE NOT NULL,
+    
+    `file_laporan` VARCHAR(255) NOT NULL,
+    `foto_hardfile` VARCHAR(255) NOT NULL,
+    `file_output` VARCHAR(255) DEFAULT NULL,
+    
+    `keterangan` TEXT NULL,
+    
+    `wilayah_id` INT NOT NULL,
+    `resor_id` INT NOT NULL,
+    
+    `created_by` INT NOT NULL,
+    
+    `status` ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+    
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (`wilayah_id`) REFERENCES `wilayah`(`id`),
+    FOREIGN KEY (`resor_id`) REFERENCES `resor`(`id`),
+    FOREIGN KEY (`created_by`) REFERENCES `pengguna`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+--
+-- Table structure for table `activity_log`
+--
+
+CREATE TABLE `activity_log` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `laporan_id` int(11) DEFAULT NULL,
+  `action` enum('SUBMIT','UPDATE','APPROVE','REJECT') NOT NULL,
+  `description` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `fk_activity_user` (`user_id`),
+  KEY `fk_activity_laporan` (`laporan_id`),
+  CONSTRAINT `fk_activity_user` FOREIGN KEY (`user_id`) REFERENCES `pengguna` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_activity_laporan` FOREIGN KEY (`laporan_id`) REFERENCES `laporan_internal` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 COMMIT;

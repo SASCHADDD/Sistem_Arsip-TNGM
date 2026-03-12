@@ -29,7 +29,7 @@ const Login = () => {
             // Navigate based on role
             if (data.user.role === 'staff') {
                 navigate('/user/dashboard');
-            } else if (['admin_balai', 'admin_wilayah'].includes(data.user.role)) {
+            } else if (['admin_balai', 'admin_wilayah', 'kepala_wilayah'].includes(data.user.role)) {
                 navigate('/admin/dashboard');
             } else {
                 // Default fallback

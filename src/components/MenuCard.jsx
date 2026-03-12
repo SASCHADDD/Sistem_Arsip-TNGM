@@ -6,7 +6,7 @@ export const MenuCard = ({ title, description, path }) => {
     const navigate = useNavigate()
 
     return (
-        <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-8 flex flex-col items-center h-125 border border-white/20 shadow-xl transition-transform hover:scale-103 duration-500">
+        <div className="bg-white rounded-3xl p-8 flex flex-col items-center h-125 border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(212,187,118,0.2)] hover:border-[#D4BB76]/50 duration-500">
             {/* Top Content: Logo & Text */}
             <div className="flex-1 flex flex-col items-center justify-center text-center w-full">
                 <img src={logo} alt="Logo" className="h-24 w-auto object-contain mb-6" />

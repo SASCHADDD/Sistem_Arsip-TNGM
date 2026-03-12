@@ -1,82 +1,100 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import SidebarUser from "../../components/SidebarUser";
-import { ArrowLeft, Calendar, MapPin, FileText, Clock, CheckCircle, XCircle, AlertCircle, ExternalLink, Image as ImageIcon, Edit, MessageSquare, FileCheck, Loader2, Trash2 } from "lucide-react";
-import { getDetailLaporan, deleteLaporan } from "../../api/laporan";
+import SidebarAdmin from "../../components/SidebarAdmin";
+import { ArrowLeft, Calendar, MapPin, FileText, CheckCircle, XCircle, AlertCircle, ExternalLink, Image as ImageIcon, MessageSquare, Loader2 } from "lucide-react";
+import { getDetailLaporan, verifyLaporan } from "../../api/laporan";
 import Swal from 'sweetalert2';
 
-const DetailLaporan = () => {
+const DetailLaporanAdmin = () => {
     const navigate = useNavigate();
     const { id } = useParams();
 
     const [report, setReport] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [isDeleting, setIsDeleting] = useState(false);
 
-    const handleDelete = async () => {
-        const result = await Swal.fire({
-            title: 'Hapus Laporan?',
-            text: "Laporan yang dihapus tidak dapat dikembalikan!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Ya, hapus!',
-            cancelButtonText: 'Batal'
-        });
-
-        if (result.isConfirmed) {
-            setIsDeleting(true);
-            try {
-                await deleteLaporan(id);
-                await Swal.fire(
-                    'Terhapus!',
-                    'Laporan Anda telah berhasil dihapus.',
-                    'success'
-                );
-                navigate('/user/riwayat-laporan');
-            } catch (err) {
-                console.error(err);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal',
-                    text: 'Gagal menghapus laporan: ' + err,
-                });
-                setIsDeleting(false);
-            }
+    const fetchDetail = async () => {
+        try {
+            setLoading(true);
+            const data = await getDetailLaporan(id);
+            setReport({
+                id: data.id,
+                title: data.judul,
+                date: new Date(data.tanggal_buat).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+                status: data.status,
+                wilayah: data.wilayah || '-',
+                resor: data.resor || '-',
+                type: data.jenis,
+                endDate: new Date(data.tanggal_berakhir).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+                description: data.keterangan || '-',
+                file: data.file_dokumen,
+                hardfile: data.foto_lampiran,
+                outputFile: data.file_output, // Add output file
+                is_mutasi: data.is_mutasi,
+                pelapor: data.pelapor, // Backend should send this
+                adminMessage: data.adminMessage // Included just like in User side
+            });
+        } catch (err) {
+            console.error(err);
+            setError('Gagal memuat detail laporan. ' + (err.response?.data?.message || ''));
+        } finally {
+            setLoading(false);
         }
     };
 
     useEffect(() => {
-        const fetchDetail = async () => {
-            try {
-                const data = await getDetailLaporan(id);
-                setReport({
-                    id: data.id,
-                    title: data.judul,
-                    date: new Date(data.tanggal_buat).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-                    status: data.status,
-                    wilayah: data.wilayah || '-',
-                    resor: data.resor || '-',
-                    type: data.jenis,
-                    endDate: new Date(data.tanggal_berakhir).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-                    description: data.keterangan || '-',
-                    file: data.file_dokumen,
-                    hardfile: data.foto_lampiran,
-                    outputFile: data.file_output,
-                    adminMessage: data.adminMessage
-                });
-            } catch (err) {
-                console.error(err);
-                setError('Gagal memuat detail laporan. ' + (err.response?.data?.message || ''));
-            } finally {
-                setLoading(false);
-            }
-        };
-
         if (id) fetchDetail();
     }, [id]);
+
+    const handleApprove = async () => {
+        const result = await Swal.fire({
+            title: 'Setujui Laporan?',
+            text: `Anda akan menyetujui laporan ini.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10B981',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Ya, Setujui!'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                await verifyLaporan(id, 'Approved');
+                await Swal.fire('Berhasil!', 'Laporan telah disetujui.', 'success');
+                fetchDetail();
+            } catch (error) {
+                Swal.fire('Gagal', error, 'error');
+            }
+        }
+    };
+
+    const handleReject = async () => {
+        const { value: catatan } = await Swal.fire({
+            title: 'Tolak Laporan?',
+            input: 'textarea',
+            inputLabel: `Alasan penolakan`,
+            inputPlaceholder: 'Tulis alasan penolakan...',
+            showCancelButton: true,
+            confirmButtonColor: '#EF4444',
+            cancelButtonColor: '#6B7280',
+            confirmButtonText: 'Tolak Laporan',
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'Anda harus menuliskan alasan penolakan!';
+                }
+            }
+        });
+
+        if (catatan) {
+            try {
+                await verifyLaporan(id, 'Rejected', catatan);
+                await Swal.fire('Ditolak!', 'Laporan telah ditolak.', 'success');
+                fetchDetail();
+            } catch (error) {
+                Swal.fire('Gagal', error, 'error');
+            }
+        }
+    };
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -90,7 +108,7 @@ const DetailLaporan = () => {
     const getStatusIcon = (status) => {
         switch (status) {
             case 'Approved': return <CheckCircle size={16} className="mr-1.5" />;
-            case 'Pending': return <Clock size={16} className="mr-1.5" />;
+            case 'Pending': return <AlertCircle size={16} className="mr-1.5" />;
             case 'Rejected': return <XCircle size={16} className="mr-1.5" />;
             default: return <AlertCircle size={16} className="mr-1.5" />;
         }
@@ -98,7 +116,6 @@ const DetailLaporan = () => {
 
     const handleDownload = (filename, folder = 'laporan') => {
         if (!filename) return;
-
         try {
             const baseUrl = import.meta.env.VITE_API_URL
                 ? import.meta.env.VITE_API_URL.replace('/api', '')
@@ -108,107 +125,90 @@ const DetailLaporan = () => {
             window.open(fileUrl, '_blank');
         } catch (error) {
             console.error('Preview error:', error);
-            alert('Gagal membuka file. Silakan coba lagi.');
+            alert('Gagal membuka file.');
         }
     };
 
     if (loading) {
         return (
-            <SidebarUser>
+            <SidebarAdmin>
                 <div className="flex h-[80vh] items-center justify-center">
-                    <div className="flex flex-col items-center gap-2 text-gray-500">
-                        <Loader2 className="animate-spin text-green-600" size={32} />
-                        <p>Memuat detail laporan...</p>
-                    </div>
+                    <Loader2 className="animate-spin text-green-600" size={32} />
                 </div>
-            </SidebarUser>
+            </SidebarAdmin>
         );
     }
 
     if (error || !report) {
         return (
-            <SidebarUser>
-                <div className="flex h-[80vh] items-center justify-center">
-                    <div className="text-center space-y-4">
-                        <div className="bg-red-100 text-red-600 p-4 rounded-full inline-block">
-                            <AlertCircle size={32} />
-                        </div>
-                        <h2 className="text-xl font-semibold text-gray-800">Gagal Memuat Data</h2>
-                        <p className="text-gray-500 max-w-md">{error || 'Data laporan tidak ditemukan'}</p>
-                        <button
-                            onClick={() => navigate('/user/riwayat-laporan')}
-                            className="btn btn-outline gap-2 mt-4"
-                        >
-                            <ArrowLeft size={18} />
-                            Kembali ke Riwayat
+            <SidebarAdmin>
+                <div className="flex h-[80vh] items-center justify-center text-center">
+                    <div>
+                        <p className="text-red-500 mb-4">{error || 'Data tidak ditemukan'}</p>
+                        <button onClick={() => navigate('/admin/verifikasi-laporan')} className="btn btn-outline">
+                            Kembali
                         </button>
                     </div>
                 </div>
-            </SidebarUser>
+            </SidebarAdmin>
         );
     }
 
     return (
-        <SidebarUser>
+        <SidebarAdmin>
             <div className="flex flex-col gap-8 text-slate-900">
                 <div className="flex items-center gap-4">
                     <button
-                        onClick={() => navigate('/user/riwayat-laporan')}
+                        onClick={() => navigate('/admin/verifikasi-laporan')}
                         className="btn btn-circle btn-ghost btn-sm"
                     >
                         <ArrowLeft size={20} />
                     </button>
                     <div>
-                        <h2 className="text-2xl font-bold mb-1">Detail Laporan</h2>
+                        <h2 className="text-2xl font-bold mb-1">Detail Verifikasi</h2>
                     </div>
                 </div>
 
-                {/* Main Content Card */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-
                     {/* Header */}
                     <div className="p-8 border-b border-gray-100 bg-gray-50/50">
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                            <h1 className="text-2xl font-bold text-gray-900 leading-tight">
-                                {report.title}
-                            </h1>
+                            <div>
+                                <h1 className="text-2xl font-bold text-gray-900 leading-tight">
+                                    {report.title}
+                                </h1>
+                                <p className="text-sm text-gray-500 mt-2 flex items-center gap-2">
+                                    Diajukan oleh: <span className="font-semibold">{report.pelapor || '-'}</span>
+                                    {report.is_mutasi && (
+                                        <span className="text-[10px] font-semibold text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded border border-orange-200">
+                                            Telah Dimutasi
+                                        </span>
+                                    )}
+                                </p>
+                            </div>
+
                             <div className="flex items-center gap-3">
                                 <span className={`px-3 py-1.5 rounded-full text-sm font-semibold flex items-center border ${getStatusColor(report.status)}`}>
                                     {getStatusIcon(report.status)}
                                     {report.status}
                                 </span>
-                                <button
-                                    onClick={() => navigate(`/user/laporan/edit/${report.id}`)}
-                                    // Disable only if Approved (or other final statuses if added later)
-                                    disabled={!['Pending', 'Rejected'].includes(report.status)}
-                                    className={`p-1.5 px-3 rounded-lg border transition-all duration-200 flex items-center gap-2 font-medium text-sm
-                                        ${!['Pending', 'Rejected'].includes(report.status)
-                                            ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                                            : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 shadow-sm cursor-pointer'}
-                                    `}
-                                    title={!['Pending', 'Rejected'].includes(report.status) ? "Laporan yang disetujui tidak dapat diedit" : "Edit Laporan"}
-                                >
-                                    <Edit size={16} />
-                                    <span className="hidden sm:inline">Edit</span>
-                                </button>
 
                                 {report.status === 'Pending' && (
-                                    <button
-                                        onClick={handleDelete}
-                                        disabled={isDeleting}
-                                        className="p-1.5 px-3 rounded-lg border border-red-200 bg-white text-red-600 hover:bg-red-50 hover:border-red-300 transition-all duration-200 flex items-center gap-2 font-medium text-sm shadow-sm"
-                                        title="Hapus Laporan"
-                                    >
-                                        {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                                        <span className="hidden sm:inline">Hapus</span>
-                                    </button>
+                                    <>
+                                        <button
+                                            onClick={handleApprove}
+                                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium text-sm shadow-sm flex items-center gap-2"
+                                        >
+                                            <CheckCircle size={16} /> Setujui
+                                        </button>
+                                        <button
+                                            onClick={handleReject}
+                                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium text-sm shadow-sm flex items-center gap-2"
+                                        >
+                                            <XCircle size={16} /> Tolak
+                                        </button>
+                                    </>
                                 )}
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-4 mt-4 text-sm text-gray-500">
-                            <div className="flex items-center gap-1.5">
-                                <Calendar size={16} />
-                                <span>Diajukan: {report.date}</span>
                             </div>
                         </div>
                     </div>
@@ -242,8 +242,6 @@ const DetailLaporan = () => {
                             </div>
                         </div>
 
-
-
                         {/* Description */}
                         <div>
                             <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
@@ -266,44 +264,38 @@ const DetailLaporan = () => {
                                 <div
                                     onClick={() => handleDownload(report.file)}
                                     className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-green-400 hover:bg-green-50 transition-all group cursor-pointer"
-                                    title="Buka Dokumen"
                                 >
                                     <div className="flex items-center gap-3 flex-1 min-w-0">
                                         <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0">
                                             <FileText size={24} />
                                         </div>
                                         <div className="overflow-hidden">
-                                            <p className="font-medium text-gray-800 group-hover:text-green-800 transition-colors truncate" title={report.file}>
+                                            <p className="font-medium text-gray-800 group-hover:text-green-800 transition-colors truncate">
                                                 {report.file}
                                             </p>
                                             <p className="text-xs text-gray-500">Document (PDF/DOCX)</p>
                                         </div>
                                     </div>
-                                    <div className="text-gray-400 group-hover:text-green-700 transition-colors">
-                                        <ExternalLink size={20} />
-                                    </div>
+                                    <ExternalLink size={20} className="text-gray-400 group-hover:text-green-700" />
                                 </div>
 
                                 {/* Hardfile Image */}
                                 <div
                                     onClick={() => handleDownload(report.hardfile)}
                                     className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-green-400 hover:bg-green-50 transition-all group cursor-pointer"
-                                    title="Buka Bukti Foto"
                                 >
                                     <div className="flex items-center gap-3 flex-1 min-w-0">
                                         <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0">
                                             <ImageIcon size={24} />
                                         </div>
                                         <div className="overflow-hidden">
-                                            <p className="font-medium text-gray-800 group-hover:text-green-800 transition-colors truncate" title={report.hardfile}>
+                                            <p className="font-medium text-gray-800 group-hover:text-green-800 transition-colors truncate">
                                                 {report.hardfile}
                                             </p>
                                             <p className="text-xs text-gray-500">Bukti Foto (Image)</p>
                                         </div>
                                     </div>
-                                    <div className="text-gray-400 group-hover:text-green-700 transition-colors">
-                                        <ExternalLink size={20} />
-                                    </div>
+                                    <ExternalLink size={20} className="text-gray-400 group-hover:text-green-700" />
                                 </div>
                             </div>
                         </div>
@@ -325,7 +317,7 @@ const DetailLaporan = () => {
                         {report.status === 'Approved' && (
                             <div>
                                 <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                    <FileCheck size={20} className="text-green-600" />
+                                    <CheckCircle size={20} className="text-green-600" />
                                     Dokumen Keluaran
                                 </h3>
 
@@ -337,7 +329,7 @@ const DetailLaporan = () => {
                                     >
                                         <div className="flex items-center gap-3 flex-1 min-w-0">
                                             <div className="w-12 h-12 rounded-full bg-green-200 text-green-700 flex items-center justify-center flex-shrink-0">
-                                                <FileCheck size={24} />
+                                                <FileText size={24} />
                                             </div>
                                             <div className="overflow-hidden">
                                                 <p className="font-medium text-gray-800 group-hover:text-green-800 transition-colors truncate" title={report.outputFile}>
@@ -352,17 +344,16 @@ const DetailLaporan = () => {
                                     </div>
                                 ) : (
                                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center text-gray-500 italic">
-                                        Dokumen keluaran belum diunggah oleh admin.
+                                        Dokumen keluaran belum diunggah.
                                     </div>
                                 )}
                             </div>
                         )}
-
                     </div>
                 </div>
             </div>
-        </SidebarUser>
+        </SidebarAdmin>
     );
 };
 
-export default DetailLaporan;
+export default DetailLaporanAdmin;

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surat Tanda Terima</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 25mm 20mm;
+        }
+
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 12pt;
+            line-height: 1.5;
+            color: #000;
+            background-color: #f9f9f9;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: white;
+            padding: 60px 80px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Salutation & Header */
+        .title-doc {
+            text-align: center;
+            font-weight: bold;
+            font-size: 14pt;
+            text-transform: uppercase;
+            text-decoration: underline;
+            margin-bottom: 30px;
+            letter-spacing: 1px;
+        }
+
+        .salutation {
+            margin-bottom: 20px;
+        }
+
+        .content-intro {
+            margin-bottom: 20px;
+        }
+
+        /* Flexbox Details (Tanpa Tabel) */
+        .details-wrapper {
+            margin-bottom: 30px;
+        }
+
+        .detail-row {
+            display: flex;
+            margin-bottom: 8px;
+            align-items: flex-start;
+        }
+
+        .detail-label {
+            width: 180px;
+            /* Seragam dan rapi */
+            flex-shrink: 0;
+        }
+
+        .detail-colon {
+            width: 20px;
+            flex-shrink: 0;
+            text-align: center;
+        }
+
+        .detail-value {
+            flex-grow: 1;
+        }
+
+        /* Paragraph Styling */
+        p {
+            margin-top: 0;
+            margin-bottom: 15px;
+            text-align: justify;
+            text-indent: 48px;
+            /* Paragraf menjorok ke dalam */
+            line-height: 1.6;
+        }
+
+        /* Signature Section */
+        .footer-section {
+            margin-top: 60px;
+            display: flex;
+            justify-content: flex-end;
+            /* Memindahkan blok ke kanan */
+        }
+
+        .signature-block {
+            width: 250px;
+            text-align: left;
+            /* Teks dalam blok diselaraskan kiri dengan kolom tanda tangan */
+        }
+
+        .signature-space {
+            height: 90px;
+        }
+
+        /* Print Override */
+        @media print {
+            body {
+                background: none;
+                padding: 0;
+                display: block;
+            }
+
+            .container {
+                box-shadow: none;
+                padding: 0;
+                margin: 0 auto;
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <!-- Judul Resmi Surat -->
+        <div class="title-doc">
+            Surat Tanda Terima Laporan Kegiatan
+        </div>
+
+        <div class="salutation">
+            Dengan Hormat,
+        </div>
+
+        <!-- Pengantar sesuai format surat resmi -->
+        <div class="content-intro">
+            Kami yang bertanda tangan di bawah ini, sebagai perwakilan instansi Taman Nasional Gunung Merapi (TNGM),
+            menyatakan surat tanda terima ini untuk rincian data laporan kegiatan sebagai berikut:
+        </div>
+
+        <!-- MENGGUNAKAN FLEXBOX DARI SURAT FORMAL -->
+        <div class="details-wrapper">
+            <div class="detail-row">
+                <div class="detail-label">Tanggal Diserahkan</div>
+                <div class="detail-colon">:</div>
+                <div class="detail-value">{{tanggal_terima}}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Judul Laporan</div>
+                <div class="detail-colon">:</div>
+                <div class="detail-value">{{judul_laporan}}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Kategori Laporan</div>
+                <div class="detail-colon">:</div>
+                <div class="detail-value">{{jenis_laporan}}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Telah terima dari</div>
+                <div class="detail-colon">:</div>
+                <div class="detail-value">{{nama_pengirim}}</div>
+            </div>
+        </div>
+
+        <!-- PARAGRAF ISI -->
+        <div class="content-paragraphs">
+            <p>
+                Dengan ini saya mewakili pihak Taman Nasional Gunung Merapi menyatakan telah menerima pelaporan dan
+                berkas dokumen seperti yang kami rinci di atas. Berkas terkait selanjutnya akan kami arsipkan di dalam
+                repositori sistem sesuai dengan standar operasional kelola arsip kami.
+            </p>
+            <p>
+                Demikian surat tanda terima laporan kegiatan ini dibuat untuk dapat dipergunakan sebagaimana fungsinya
+                secara sah demi kebaikan instansi. Atas perhatian Anda, saya ucapkan terima kasih.
+            </p>
+        </div>
+
+        <!-- TANDA TANGAN RATA KANAN (DARI SURAT FORMAL) -->
+        <div class="footer-section">
+            <div class="signature-block">
+                <div>Yogyakarta, {{tanggal_terima}}</div> <!-- Bisa menggunakan parameter dinamis tanggal hari ini  -->
+                <div style="margin-top: 15px;">Penerima Laporan,</div>
+
+                <div class="signature-space"></div>
+
+                <div style="text-decoration: underline;"><b>{{penerima}}</b></div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+
+</html>

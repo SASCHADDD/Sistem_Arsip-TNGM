@@ -22,14 +22,15 @@ api.interceptors.request.use(
     }
 );
 
-// Response interceptor
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401) {
-            // Optional: Handle token expiration or unauthorized access globally
-            // localStorage.removeItem('token');
-            // window.location.href = '/login';
+        // Jangan redirect ke / jika error berasal dari endpoint login
+        const isLoginRequest = error.config?.url === '/auth/login';
+
+        if (!isLoginRequest && (error.response?.status === 401 || error.response?.status === 403)) {
+            localStorage.removeItem('token');
+            window.location.href = '/';
         }
         return Promise.reject(error);
     }
