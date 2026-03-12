@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import SidebarAdmin from "../../components/SidebarAdmin";
-import { ArrowLeft, Calendar, MapPin, FileText, CheckCircle, XCircle, AlertCircle, ExternalLink, Image as ImageIcon, MessageSquare, Loader2 } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, FileText, CheckCircle, XCircle, AlertCircle, ExternalLink, Image as ImageIcon, MessageSquare, Loader2, Building, Mail } from "lucide-react";
 import { getDetailLaporan, verifyLaporan } from "../../api/laporan";
 import Swal from 'sweetalert2';
 
 const DetailLaporanAdmin = () => {
     const navigate = useNavigate();
     const { id } = useParams();
+    const [searchParams] = useSearchParams();
+    const source = searchParams.get('source') || 'internal'; // 'internal' | 'eksternal' | 'mitra'
 
     const [report, setReport] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -16,7 +18,7 @@ const DetailLaporanAdmin = () => {
     const fetchDetail = async () => {
         try {
             setLoading(true);
-            const data = await getDetailLaporan(id);
+            const data = await getDetailLaporan(id, source);
             setReport({
                 id: data.id,
                 title: data.judul,
@@ -24,15 +26,18 @@ const DetailLaporanAdmin = () => {
                 status: data.status,
                 wilayah: data.wilayah || '-',
                 resor: data.resor || '-',
+                instansi: data.instansi || null,
+                email: data.email || null,
+                tipe: data.tipe || null,
                 type: data.jenis,
-                endDate: new Date(data.tanggal_berakhir).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+                endDate: data.tanggal_berakhir ? new Date(data.tanggal_berakhir).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-',
                 description: data.keterangan || '-',
                 file: data.file_dokumen,
                 hardfile: data.foto_lampiran,
-                outputFile: data.file_output, // Add output file
+                outputFile: data.file_output,
                 is_mutasi: data.is_mutasi,
-                pelapor: data.pelapor, // Backend should send this
-                adminMessage: data.adminMessage // Included just like in User side
+                pelapor: data.pelapor,
+                adminMessage: data.adminMessage
             });
         } catch (err) {
             console.error(err);
@@ -59,7 +64,7 @@ const DetailLaporanAdmin = () => {
 
         if (result.isConfirmed) {
             try {
-                await verifyLaporan(id, 'Approved');
+                await verifyLaporan(id, 'Approved', null, source);
                 await Swal.fire('Berhasil!', 'Laporan telah disetujui.', 'success');
                 fetchDetail();
             } catch (error) {
@@ -87,7 +92,7 @@ const DetailLaporanAdmin = () => {
 
         if (catatan) {
             try {
-                await verifyLaporan(id, 'Rejected', catatan);
+                await verifyLaporan(id, 'Rejected', catatan, source);
                 await Swal.fire('Ditolak!', 'Laporan telah ditolak.', 'success');
                 fetchDetail();
             } catch (error) {
@@ -174,10 +179,18 @@ const DetailLaporanAdmin = () => {
                     <div className="p-8 border-b border-gray-100 bg-gray-50/50">
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                             <div>
-                                <h1 className="text-2xl font-bold text-gray-900 leading-tight">
-                                    {report.title}
-                                </h1>
-                                <p className="text-sm text-gray-500 mt-2 flex items-center gap-2">
+                                <div className="flex items-center gap-2 mb-1">
+                                    {source !== 'internal' && (
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase
+                                            ${source === 'mitra' ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-orange-100 text-orange-700 border border-orange-200'}`}>
+                                            {source === 'mitra' ? 'Mitra' : 'Eksternal'}
+                                        </span>
+                                    )}
+                                    <h1 className="text-2xl font-bold text-gray-900 leading-tight">
+                                        {report.title}
+                                    </h1>
+                                </div>
+                                <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
                                     Diajukan oleh: <span className="font-semibold">{report.pelapor || '-'}</span>
                                     {report.is_mutasi && (
                                         <span className="text-[10px] font-semibold text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded border border-orange-200">
@@ -185,6 +198,21 @@ const DetailLaporanAdmin = () => {
                                         </span>
                                     )}
                                 </p>
+                                {/* Info tambahan untuk laporan eksternal/mitra */}
+                                {source !== 'internal' && (
+                                    <div className="flex flex-wrap gap-3 mt-2">
+                                        {report.instansi && (
+                                            <span className="flex items-center gap-1 text-xs text-gray-500">
+                                                <Building size={13} /> {report.instansi}
+                                            </span>
+                                        )}
+                                        {report.email && (
+                                            <span className="flex items-center gap-1 text-xs text-gray-500">
+                                                <Mail size={13} /> {report.email}
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex items-center gap-3">

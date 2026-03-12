@@ -33,9 +33,9 @@ export const getRiwayatLaporan = async () => {
     }
 };
 
-export const getDetailLaporan = async (id) => {
+export const getDetailLaporan = async (id, source = 'internal') => {
     try {
-        const response = await api.get(`/laporan/detail/${id}`);
+        const response = await api.get(`/laporan/detail/${id}?source=${source}`);
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Gagal mengambil detail laporan';
@@ -149,5 +149,18 @@ export const submitEksternalReport = async (formData) => {
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Terjadi kesalahan saat mengajukan laporan eksternal';
+    }
+};
+
+export const submitMitraReport = async (formData) => {
+    try {
+        const response = await api.post('/laporan/submit-mitra', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            }
+        });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Terjadi kesalahan saat mengajukan laporan mitra';
     }
 };

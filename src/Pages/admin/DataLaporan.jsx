@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SidebarAdmin from '../../components/SidebarAdmin';
-import { Search, Filter, Download, FileText, MapPin, Calendar, ChevronRight, Eye, Loader2, UploadCloud } from 'lucide-react';
+import { Search, Filter, Download, FileText, MapPin, Calendar, ChevronRight, Eye, Loader2, UploadCloud, FileDown } from 'lucide-react';
 import { getAllApprovedReports, getFormOptions } from '../../api/laporan';
+import Swal from 'sweetalert2';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 const DataLaporan = () => {
     const navigate = useNavigate();
@@ -97,6 +100,38 @@ const DataLaporan = () => {
         } catch (error) {
             console.error('Download error:', error);
         }
+    };
+
+    const handleExportExcel = () => {
+        if (filteredReports.length === 0) {
+            Swal.fire('Info', 'Tidak ada data untuk diekspor', 'info');
+            return;
+        }
+
+        // Transform data untuk excel agar lebih rapi
+        const dataToExport = filteredReports.map(item => ({
+            'ID': item.id,
+            'Judul Laporan': item.judul,
+            'Jenis': item.jenis,
+            'Pelapor/Instansi': item.pelapor,
+            'Tipe': item.tipe_laporan,
+            'Resor/Wilayah': item.resor || item.wilayah,
+            'Tanggal Terima': new Date(item.tanggal).toLocaleDateString('id-ID'),
+            'Status': 'Disetujui',
+            'Penilaian': item.penilaian || '-',
+            'ID Database': `${item.source_table}-${item.id}`
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Data Laporan");
+
+        // Download file
+        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
+        saveAs(data, `Rekap_Laporan_TNGM_${new Date().getTime()}.xlsx`);
+        
+        Swal.fire('Berhasil', 'Data berhasil diekspor ke Excel', 'success');
     };
 
     const handleUploadSusulan = async (id, source) => {
@@ -238,6 +273,15 @@ const DataLaporan = () => {
                                 </select>
                                 <ChevronRight className="absolute right-3 top-1/2 transform -translate-y-1/2 rotate-90 text-gray-400 pointer-events-none" size={14} />
                             </div>
+
+                            {/* Tombol Ekspor Excel */}
+                            <button
+                                onClick={handleExportExcel}
+                                className="flex items-center justify-center gap-2 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-sm shadow-sm transition-all active:scale-95 group shrink-0"
+                            >
+                                <FileDown size={18} className="group-hover:translate-y-0.5 transition-transform" />
+                                Ekspor Excel
+                            </button>
                         </div>
                     </div>
                 </div>

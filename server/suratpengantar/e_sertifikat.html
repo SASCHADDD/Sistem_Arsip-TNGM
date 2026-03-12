@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Sertifikat TNGM</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            background: #fff;
+            width: 297mm;
+            height: 210mm;
+            overflow: hidden;
+        }
+
+        .certificate-wrapper {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0d3d1a 0%, #1a6b2d 40%, #0d3d1a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8mm;
+        }
+
+        .certificate-inner {
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            border: 3px solid #c8a84b;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12mm 20mm;
+        }
+
+        /* Corner ornaments */
+        .corner {
+            position: absolute;
+            width: 30mm;
+            height: 30mm;
+        }
+        .corner-tl { top: 4mm; left: 4mm; border-top: 4px solid #c8a84b; border-left: 4px solid #c8a84b; }
+        .corner-tr { top: 4mm; right: 4mm; border-top: 4px solid #c8a84b; border-right: 4px solid #c8a84b; }
+        .corner-bl { bottom: 4mm; left: 4mm; border-bottom: 4px solid #c8a84b; border-left: 4px solid #c8a84b; }
+        .corner-br { bottom: 4mm; right: 4mm; border-bottom: 4px solid #c8a84b; border-right: 4px solid #c8a84b; }
+
+        /* Header Logos & Instansi */
+        .header-section {
+            display: flex;
+            align-items: center;
+            gap: 10mm;
+            margin-bottom: 5mm;
+        }
+
+        .logo-img {
+            width: 22mm;
+            height: auto;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .header-text {
+            text-align: center;
+        }
+
+        .instansi-name {
+            font-size: 10pt;
+            font-weight: bold;
+            color: #1a2e1a;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .instansi-sub {
+            font-size: 7.5pt;
+            color: #4a5568;
+            margin-top: 1mm;
+        }
+
+        /* Divider */
+        .divider {
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #c8a84b 20%, #c8a84b 80%, transparent);
+            margin-bottom: 5mm;
+        }
+
+        /* Main Title */
+        .title-e {
+            font-size: 9pt;
+            color: #c8a84b;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            font-family: Georgia, serif;
+            margin-bottom: 1mm;
+        }
+
+        .title-main {
+            font-size: 28pt;
+            font-weight: bold;
+            color: #0d3d1a;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-family: Georgia, serif;
+            line-height: 1;
+            margin-bottom: 4mm;
+        }
+
+        /* Subtitle */
+        .subtitle {
+            font-size: 9pt;
+            color: #4a5568;
+            margin-bottom: 5mm;
+            text-align: center;
+        }
+
+        /* Recipient section */
+        .recipient-label {
+            font-size: 9pt;
+            color: #4a5568;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 1mm;
+        }
+
+        .recipient-name {
+            font-size: 22pt;
+            font-weight: bold;
+            color: #0d3d1a;
+            font-family: 'Georgia', serif;
+            font-style: italic;
+            border-bottom: 2px solid #c8a84b;
+            padding-bottom: 2mm;
+            margin-bottom: 3mm;
+            text-align: center;
+            min-width: 120mm;
+        }
+
+        .recipient-instansi {
+            font-size: 10pt;
+            color: #2d3748;
+            margin-bottom: 4mm;
+            text-align: center;
+            font-style: italic;
+        }
+
+        /* Description */
+        .achievement-text {
+            font-size: 9pt;
+            color: #4a5568;
+            text-align: center;
+            max-width: 200mm;
+            line-height: 1.6;
+            margin-bottom: 4mm;
+        }
+
+        .report-title-box {
+            background: #f0f7f0;
+            border: 1px solid #c8a84b;
+            border-radius: 3mm;
+            padding: 3mm 10mm;
+            margin-bottom: 5mm;
+            text-align: center;
+        }
+
+        .report-title-label {
+            font-size: 7.5pt;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .report-title-value {
+            font-size: 10.5pt;
+            font-weight: bold;
+            color: #0d3d1a;
+            margin-top: 0.5mm;
+        }
+
+        /* Footer */
+        .footer-section {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: auto;
+        }
+
+        .footer-left {
+            display: flex;
+            flex-direction: column;
+            gap: 1mm;
+        }
+
+        .cert-number {
+            font-size: 7pt;
+            color: #718096;
+        }
+
+        .cert-date {
+            font-size: 7pt;
+            color: #718096;
+        }
+
+        .signature-block {
+            text-align: center;
+        }
+
+        .signature-label {
+            font-size: 8pt;
+            color: #4a5568;
+            margin-bottom: 12mm;
+        }
+
+        .signature-line {
+            width: 50mm;
+            border-top: 1.5px solid #1a2e1a;
+            margin: 0 auto 1mm;
+        }
+
+        .signer-name {
+            font-size: 8pt;
+            font-weight: bold;
+            color: #0d3d1a;
+        }
+
+        .signer-title {
+            font-size: 7pt;
+            color: #4a5568;
+        }
+
+        /* Gold seal */
+        .seal {
+            width: 24mm;
+            height: 24mm;
+            background: radial-gradient(circle, #f5d882, #c8a84b);
+            border-radius: 50%;
+            border: 2px solid #c8a84b;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #0d3d1a;
+            font-size: 6pt;
+            font-weight: bold;
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        .footer-badges {
+            display: flex;
+            gap: 4mm;
+            align-items: center;
+        }
+
+        .badge {
+            background: #0d3d1a;
+            color: #c8a84b;
+            padding: 1.5mm 4mm;
+            border-radius: 2mm;
+            font-size: 7pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="certificate-wrapper">
+        <div class="certificate-inner">
+            <!-- Corner Ornaments -->
+            <div class="corner corner-tl"></div>
+            <div class="corner corner-tr"></div>
+            <div class="corner corner-bl"></div>
+            <div class="corner corner-br"></div>
+
+            <!-- Header -->
+            <div class="header-section">
+                <img src="{{logo_tngm_base64}}" alt="Logo TNGM" class="logo-img">
+                <div class="header-text">
+                    <div class="instansi-name">Taman Nasional Gunung Merapi</div>
+                    <div class="instansi-sub">Balai Taman Nasional Gunung Merapi – Kementerian Lingkungan Hidup dan Kehutanan RI</div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Main Title -->
+            <div class="title-e">ELECTRONIC</div>
+            <div class="title-main">SERTIFIKAT</div>
+            <div class="subtitle">Diberikan kepada yang terhormat</div>
+
+            <!-- Recipient -->
+            <div class="recipient-name">{{nama_penerima}}</div>
+            <div class="recipient-instansi">{{nama_instansi}}</div>
+
+            <!-- Description -->
+            <div class="achievement-text">
+                Telah berhasil menyerahkan laporan kegiatan dan dinyatakan <strong>DITERIMA</strong><br>
+                oleh Balai Taman Nasional Gunung Merapi.
+            </div>
+
+            <!-- Report Info Box -->
+            <div class="report-title-box">
+                <div class="report-title-label">Judul Laporan / Kegiatan</div>
+                <div class="report-title-value">{{judul_laporan}}</div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer-section">
+                <div class="footer-left">
+                    <div class="cert-number">No. Sertifikat: TNGM/CERT/{{nomor_sertifikat}}</div>
+                    <div class="cert-date">Diterbitkan: {{tanggal_terbit}}</div>
+                    <div class="footer-badges">
+                        <span class="badge">{{jenis_laporan}}</span>
+                        <span class="badge">Verified</span>
+                    </div>
+                </div>
+
+                <div class="seal">
+                    ✦<br>TNGM<br>VERIFIED<br>✦
+                </div>
+
+                <div class="signature-block">
+                    <div class="signature-label">Pejabat Penerima Laporan,</div>
+                    <div class="signature-line"></div>
+                    <div class="signer-name">{{nama_admin}}</div>
+                    <div class="signer-title">Balai Taman Nasional Gunung Merapi</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

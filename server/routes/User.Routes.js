@@ -11,11 +11,19 @@ router.get(
     userController.getAllStaff
 );
 
+// Route untuk mendapatkan rekapitulasi penilaian seluruh staf (untuk ekspor/dataset)
+router.get(
+    '/staff-rekap',
+    verifyToken,
+    authorizeRoles('admin_balai', 'admin_wilayah', 'kepala_wilayah'),
+    userController.getStaffAssessmentRekap
+);
+
 // Route untuk mendapatkan detail profil beserta statistik dari staf tertentu
 router.get(
     '/staff/:id',
     verifyToken,
-    authorizeRoles('admin_balai', 'admin_wilayah', 'kepala_wilayah'),
+    authorizeRoles('admin_balai', 'admin_wilayah', 'kepala_wilayah', 'staff'),
     userController.getStaffDetail
 );
 

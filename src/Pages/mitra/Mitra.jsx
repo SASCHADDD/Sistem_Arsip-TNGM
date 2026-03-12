@@ -1,15 +1,21 @@
-import { useState } from "react";
-import Navbar from "../../components/Navbar";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import Footer from "../../components/Footer";
-import { UploadCloud, Camera, Image, FileText, Handshake, User, Building, Mail, FileCheck, List, MapPin, Send, RotateCcw, Type } from "lucide-react";
+import { UploadCloud, Camera, Image, FileText, Handshake, User, Building, Mail, FileCheck, List, MapPin, Send, RotateCcw, Type, LogOut, CheckCircle } from "lucide-react";
+import { submitMitraReport } from "../../api/laporan";
 import Swal from 'sweetalert2';
 
+
 const Mitra = () => {
+    const navigate = useNavigate();
+    const mitraUser = JSON.parse(localStorage.getItem('eksternal_user') || 'null');
+    const mitraToken = localStorage.getItem('eksternal_token');
+
     const [formData, setFormData] = useState({
-        namaPic: '',
-        namaMitra: '',
+        namaPic: mitraUser?.nama || '',
+        namaMitra: mitraUser?.instansi || '',
         nomorPks: '',
-        email: '',
+        email: mitraUser?.email || '',
         judul: '',
         jenis: '',
         wilayah: '',
@@ -22,6 +28,21 @@ const Mitra = () => {
     const [dragActive, setDragActive] = useState(false);
     const [dragActiveHardfile, setDragActiveHardfile] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Auth Guard: wajib login sebelum akses form
+    useEffect(() => {
+        if (!mitraToken || !mitraUser) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Login Diperlukan',
+                text: 'Anda harus login terlebih dahulu untuk mengirim laporan Mitra.',
+                confirmButtonColor: '#7c3aed',
+                confirmButtonText: 'Ke Halaman Login'
+            }).then(() => navigate('/mitra/login'));
+        } else if (mitraUser.role !== 'mitra') {
+            navigate('/eksternal/login');
+        }
+    }, []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -100,61 +121,66 @@ const Mitra = () => {
         });
 
         try {
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-            const response = await fetch(`${baseUrl}/laporan/submit-mitra`, {
-                method: 'POST',
-                body: submitData
+            const result = await submitMitraReport(submitData);
+            await Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: result.message || 'Laporan Mitra Anda telah berhasil dikirim.',
+                confirmButtonColor: '#1B5E20'
             });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Berhasil!',
-                    text: 'Laporan Mitra Anda telah berhasil dikirim.'
-                });
-                handleReset();
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal',
-                    text: data.message || 'Terjadi kesalahan saat mengirim laporan.'
-                });
-            }
+            navigate('/mitra/dashboard');
         } catch (error) {
             console.error('Error submitting form:', error);
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: 'Koneksi ke server gagal. Pastikan koneksi internet Anda stabil.'
+                text: typeof error === 'string' ? error : 'Gagal mengirim laporan. Pastikan koneksi internet Anda stabil.'
             });
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const handleReset = () => {
-        setFormData({
-            namaPic: '',
-            namaMitra: '',
-            nomorPks: '',
-            email: '',
-            judul: '',
-            jenis: '',
-            wilayah: '',
-            tanggalBerakhir: '',
-            file: null,
-            hardfile: null,
-            keterangan: ''
-        });
-    };
 
     return (
         <div className="min-h-screen flex flex-col">
-            <Navbar />
 
             <main className="flex-1 container mx-auto px-6 py-12 max-w-4xl">
+
+                {/* Info Bar User Mitra */}
+                {mitraUser && (
+                    <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 bg-purple-700 rounded-full flex items-center justify-center flex-shrink-0">
+                                <CheckCircle size={18} className="text-white" />
+                            </div>
+                            <div>
+                                <p className="font-semibold text-purple-900 text-sm">Login sebagai: {mitraUser.nama}</p>
+                                <p className="text-purple-700 text-xs">{mitraUser.instansi} · {mitraUser.email}</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <Link
+                                to="/mitra/dashboard"
+                                className="flex items-center gap-1.5 px-4 py-2 border border-purple-600 text-purple-700 text-sm font-medium rounded-lg hover:bg-purple-100 transition-colors"
+                            >
+                                Riwayat Laporan
+                            </Link>
+                            <button
+                                onClick={() => {
+                                    localStorage.removeItem('eksternal_token');
+                                    localStorage.removeItem('eksternal_user');
+                                    navigate('/mitra/login');
+                                }}
+                                className="flex items-center gap-1.5 px-4 py-2 border border-red-200 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition-colors"
+                            >
+                                <LogOut size={14} />
+                                Keluar
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                     <div className="p-8 border-b border-gray-100 bg-white">
                         <div className="flex items-center gap-3 mb-2">

@@ -154,24 +154,30 @@ const DashboardAdmin = () => {
                                     {/* Responsive Recharts - BarChart */}
                                     <div className="w-full h-72 md:h-80 mt-4 pr-6">
                                         <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                                            <BarChart data={stats.resor_stats} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
+                                            <BarChart 
+                                                data={stats.resor_stats.filter(r => r.value > 0)} 
+                                                margin={{ top: 10, right: 30, left: 0, bottom: 20 }}
+                                            >
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                                                 <XAxis
                                                     dataKey="name"
                                                     axisLine={false}
                                                     tickLine={false}
-                                                    tick={{ fill: '#6B7280', fontSize: 12 }}
+                                                    tick={{ fill: '#6B7280', fontSize: 10 }}
                                                     dy={10}
+                                                    interval={0}
+                                                    angle={-15}
+                                                    textAnchor="end"
                                                 />
                                                 <YAxis
                                                     axisLine={false}
                                                     tickLine={false}
                                                     tick={{ fill: '#6B7280', fontSize: 12 }}
-                                                    domain={[0, 'auto']}
+                                                    domain={[0, 3]}
                                                 />
                                                 <Tooltip content={renderCustomTooltip} cursor={{ fill: '#F3F4F6' }} />
                                                 <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={60}>
-                                                    {stats.resor_stats.map((entry, index) => (
+                                                    {stats.resor_stats.filter(r => r.value > 0).map((entry, index) => (
                                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                                     ))}
                                                 </Bar>
@@ -196,11 +202,16 @@ const DashboardAdmin = () => {
 
                                     {/* Warning Section for Below-Average Resorts */}
                                     {(() => {
-                                        const totalAverages = stats.resor_stats.reduce((acc, curr) => acc + curr.value, 0);
-                                        const globalAverage = totalAverages / stats.resor_stats.length;
-                                        const underperforming = stats.resor_stats.filter(r => r.value < globalAverage);
+                                        // Only count resorts that have data (value > 0)
+                                        const resorsWithData = stats.resor_stats.filter(r => r.value > 0);
+                                        const totalAverages = resorsWithData.reduce((acc, curr) => acc + curr.value, 0);
+                                        const globalAverage = resorsWithData.length > 0 ? totalAverages / resorsWithData.length : 0;
+                                        
+                                        // Underperforming are those with data BUT below average, 
+                                        // OR those with 0 data (meaning they haven't submitted anything/not assessed)
+                                        const underperforming = stats.resor_stats.filter(r => r.value < globalAverage || r.value === 0);
 
-                                        if (underperforming.length > 0) {
+                                        if (underperforming.length > 0 && globalAverage > 0) {
                                             return (
                                                 <div className="w-full mt-2 bg-orange-50/80 border border-orange-200 rounded-lg p-4 flex flex-col gap-2">
                                                     <div className="flex items-center gap-2 text-orange-800 font-bold">
@@ -208,7 +219,7 @@ const DashboardAdmin = () => {
                                                         <span>Peringatan: Kinerja di Bawah Rata-Rata</span>
                                                     </div>
                                                     <p className="text-sm text-orange-700 mb-1">
-                                                        Rata-rata keseluruhan saat ini adalah <strong>{globalAverage.toFixed(1)}</strong>. Berikut adalah resor dengan nilai di bawah rata-rata:
+                                                        Rata-rata dari resor yang telah dinilai adalah <strong>{globalAverage.toFixed(1)}</strong>. Berikut adalah resor dengan nilai di bawah rata-rata atau belum memiliki penilaian:
                                                     </p>
                                                     <div className="flex flex-wrap gap-2">
                                                         {underperforming.map((resor, idx) => (
@@ -237,7 +248,7 @@ const DashboardAdmin = () => {
                         <div className="flex justify-between items-center mb-2">
                             <h3 className="text-lg font-bold text-gray-800">Aktivitas Terbaru</h3>
                             <button
-                                onClick={() => navigate('/detail-aktivitas')}
+                                onClick={() => navigate('/admin/detail-aktivitas')}
                                 className="text-sm text-[#D4BB76] font-medium hover:text-[#b59e5d] hover:underline cursor-pointer"
                             >
                                 Lihat Semua

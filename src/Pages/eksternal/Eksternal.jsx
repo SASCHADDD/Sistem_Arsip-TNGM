@@ -1,18 +1,23 @@
 import { useState, useEffect } from "react";
-import Navbar from "../../components/Navbar";
+import { Link, useNavigate } from "react-router-dom";
 import Footer from "../../components/Footer";
-import { UploadCloud, Camera, Image, FileText, User, Building, Mail, MapPin, List, Calendar, Send, RotateCcw, Type } from "lucide-react";
+import { UploadCloud, Camera, Image, FileText, User, Building, Mail, MapPin, List, Calendar, Send, RotateCcw, Type, LogOut, CheckCircle } from "lucide-react";
 import { submitEksternalReport, getFormOptions } from "../../api/laporan";
 import Swal from "sweetalert2";
 
+
 const Eksternal = () => {
+    const navigate = useNavigate();
+    const eksternalUser = JSON.parse(localStorage.getItem('eksternal_user') || 'null');
+    const eksternalToken = localStorage.getItem('eksternal_token');
+
     const [formData, setFormData] = useState({
-        nama: '',
-        instansi: '',
-        email: '',
+        nama: eksternalUser?.nama || '',
+        instansi: eksternalUser?.instansi || '',
+        email: eksternalUser?.email || '',
         judul: '',
         jenis: '',
-        wilayah: '', // Walaupun namanya wilayah, ini akan menyimpan nama Resor/Balai
+        wilayah: '',
         tanggalBerakhir: '',
         file: null,
         hardfile: null,
@@ -23,6 +28,21 @@ const Eksternal = () => {
     const [dragActiveHardfile, setDragActiveHardfile] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [resorOptions, setResorOptions] = useState([]);
+
+    // Auth Guard: wajib login sebelum akses form
+    useEffect(() => {
+        if (!eksternalToken || !eksternalUser) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Login Diperlukan',
+                text: 'Anda harus login terlebih dahulu untuk mengirim laporan.',
+                confirmButtonColor: '#15803d',
+                confirmButtonText: 'Ke Halaman Login'
+            }).then(() => navigate('/eksternal/login'));
+        } else if (eksternalUser.role !== 'eksternal') {
+            navigate('/mitra/login');
+        }
+    }, []);
 
     useEffect(() => {
         const fetchOptions = async () => {
@@ -120,13 +140,13 @@ const Eksternal = () => {
 
         try {
             const result = await submitEksternalReport(data);
-            Swal.fire({
+            await Swal.fire({
                 icon: "success",
                 title: "Berhasil!",
                 text: result.message || "Laporan berhasil dikirim! Terima kasih atas partisipasi Anda.",
                 confirmButtonColor: '#1B5E20'
             });
-            handleReset();
+            navigate('/eksternal/dashboard');
         } catch (error) {
             Swal.fire({
                 icon: "error",
@@ -155,9 +175,43 @@ const Eksternal = () => {
 
     return (
         <div className="min-h-screen flex flex-col">
-            <Navbar />
 
             <main className="flex-1 container mx-auto px-6 py-12 max-w-7xl">
+
+                {/* Info Bar User Login */}
+                {eksternalUser && (
+                    <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 bg-green-700 rounded-full flex items-center justify-center flex-shrink-0">
+                                <CheckCircle size={18} className="text-white" />
+                            </div>
+                            <div>
+                                <p className="font-semibold text-green-900 text-sm">Login sebagai: {eksternalUser.nama}</p>
+                                <p className="text-green-700 text-xs">{eksternalUser.instansi} · {eksternalUser.email}</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <Link
+                                to="/eksternal/dashboard"
+                                className="flex items-center gap-1.5 px-4 py-2 border border-green-600 text-green-700 text-sm font-medium rounded-lg hover:bg-green-100 transition-colors"
+                            >
+                                Riwayat Laporan
+                            </Link>
+                            <button
+                                onClick={() => {
+                                    localStorage.removeItem('eksternal_token');
+                                    localStorage.removeItem('eksternal_user');
+                                    navigate('/eksternal/login');
+                                }}
+                                className="flex items-center gap-1.5 px-4 py-2 border border-red-200 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition-colors"
+                            >
+                                <LogOut size={14} />
+                                Keluar
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                     <div className="p-8 border-b border-gray-100 bg-white">
                         <h1 className="text-2xl font-bold text-gray-900">Form Laporan Eksternal</h1>

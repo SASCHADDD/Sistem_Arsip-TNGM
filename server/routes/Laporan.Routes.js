@@ -37,12 +37,12 @@ const handleUploadEksternal = (req, res, next) => {
     });
 };
 
-// --- PUBLIC ROUTES (Eksternal & Mitra) ---
-router.post('/submit-eksternal', handleUploadEksternal, laporanController.submitLaporanEksternal);
-router.post('/submit-mitra', handleUploadEksternal, laporanController.submitLaporanMitra);
-
-// Route untuk mengambil opsi form laporan (bisa diakses publik untuk eksternal form)
+// --- PUBLIC ROUTES (Form options) ---
 router.get('/form-options', laporanController.getFormOptions);
+
+// --- AUTHENTICATED ROUTES Eksternal & Mitra (wajib login) ---
+router.post('/submit-eksternal', verifyToken, handleUploadEksternal, laporanController.submitLaporanEksternal);
+router.post('/submit-mitra', verifyToken, handleUploadEksternal, laporanController.submitLaporanMitra);
 
 
 // --- USER ROUTES ---

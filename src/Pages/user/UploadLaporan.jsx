@@ -231,9 +231,7 @@ const UploadLaporan = () => {
                     timer: 2000,
                     showConfirmButton: false
                 });
-                handleReset();
-                // Optional: Navigate to riwayat or stay
-                // navigate('/user/riwayat-laporan');
+                navigate('/user/riwayat-laporan');
             }
 
         } catch (err) {

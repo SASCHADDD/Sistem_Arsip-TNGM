@@ -42,3 +42,14 @@ export const deleteStaff = async (id) => {
         throw error.response?.data?.message || 'Gagal menghapus staf';
     }
 };
+
+// Get assessment rekap for all staff
+export const getStaffAssessmentRekap = async () => {
+    try {
+        const response = await api.get('/users/staff-rekap');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching staff rekap:', error);
+        throw error;
+    }
+};

@@ -9,13 +9,17 @@ import UploadLaporan from './Pages/user/UploadLaporan.jsx';
 import RiwayatLaporan from "./Pages/user/RiwayatLaporan.jsx";
 import DetailLaporan from "./Pages/user/DetailLaporan.jsx";
 import Eksternal from "./Pages/eksternal/Eksternal.jsx";
+import LoginEksternal from "./Pages/eksternal/LoginEksternal.jsx";
+import DashboardEksternal from "./Pages/eksternal/DashboardEksternal.jsx";
 import Mitra from "./Pages/mitra/Mitra.jsx";
+import LoginMitra from "./Pages/mitra/LoginMitra.jsx";
 import DataLaporan from "./Pages/admin/DataLaporan.jsx";
 import DetailLaporanAdmin from "./Pages/admin/DetailLaporanAdmin.jsx";
 import ManajemenStaff from "./Pages/admin/ManajemenStaff.jsx";
 import DetailStaffAdmin from "./Pages/admin/DetailStaffAdmin.jsx";
 import InputArsipLama from "./Pages/admin/InputArsipLama.jsx";
 import DetailAktivitas from "./Pages/DetailAktivitas.jsx";
+
 
 const PrivateRoute = () => {
   const token = localStorage.getItem('token');
@@ -32,7 +36,11 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/Login" element={<Login />} />
           <Route path='/eksternal/Eksternal' element={<Eksternal />} />
+          <Route path='/eksternal/login' element={<LoginEksternal />} />
+          <Route path='/eksternal/dashboard' element={<DashboardEksternal />} />
           <Route path='/mitra/Mitra' element={<Mitra />} />
+          <Route path='/mitra/login' element={<LoginMitra />} />
+          <Route path='/mitra/dashboard' element={<DashboardEksternal />} />
 
           {/* private route*/}
           <Route element={<PrivateRoute />}>
@@ -48,7 +56,7 @@ function App() {
             <Route path='/admin/manajemen-staff' element={<ManajemenStaff />} />
             <Route path='/admin/akun-staff/:id' element={<DetailStaffAdmin />} />
             <Route path='/admin/input-arsip' element={<InputArsipLama />} />
-            <Route path='/detail-aktivitas' element={<DetailAktivitas />} />
+            <Route path='/admin/detail-aktivitas' element={<DetailAktivitas />} />
           </Route>
         </Routes>
       </Router>

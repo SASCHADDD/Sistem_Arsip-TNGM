@@ -216,6 +216,89 @@ const DetailStaffAdmin = () => {
                         </div>
                     </div>
 
+                    {/* Full Width Bottom - Reports History */}
+                    <div className="lg:col-span-3">
+                        <div className="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden flex flex-col transition-all hover:shadow-md">
+                            <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
+                                        <Award size={20} />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-gray-900">Riwayat Penilaian Laporan</h3>
+                                        <p className="text-xs text-slate-500 font-medium">Daftar laporan yang telah diajukan dan dinilai oleh admin</p>
+                                    </div>
+                                </div>
+                                <div className="bg-white px-4 py-1.5 rounded-full border border-gray-200 text-xs font-bold text-gray-600 shadow-sm">
+                                    {staffData.reports?.length || 0} Laporan
+                                </div>
+                            </div>
+                            
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-slate-50/30">
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50">Judul Laporan</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50">Tanggal</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50">Status</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50">Penilaian</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50">Catatan/Alasan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {staffData.reports && staffData.reports.length > 0 ? (
+                                            staffData.reports.map((report) => (
+                                                <tr key={report.id} className="hover:bg-slate-50/50 transition-colors group">
+                                                    <td className="px-6 py-4">
+                                                        <div className="font-bold text-gray-900 group-hover:text-green-700 transition-colors">{report.judul}</div>
+                                                        <div className="text-[10px] text-gray-400 font-medium">ID: #{report.id}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm text-gray-600 font-medium">
+                                                        {new Date(report.created_at).toLocaleDateString('id-ID', {
+                                                            day: 'numeric',
+                                                            month: 'long',
+                                                            year: 'numeric'
+                                                        })}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold border ${
+                                                            report.status === 'Approved' ? 'bg-green-50 text-green-700 border-green-100' :
+                                                            report.status === 'Rejected' ? 'bg-red-50 text-red-700 border-red-100' :
+                                                            'bg-yellow-50 text-yellow-700 border-yellow-100'
+                                                        }`}>
+                                                            {report.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {report.penilaian ? (
+                                                            <span className={`px-3 py-1 rounded-full text-xs font-black tracking-tight ${
+                                                                report.penilaian === 'Baik' ? 'bg-green-600 text-white shadow-[0_4px_12px_-2px_rgba(22,163,74,0.3)]' :
+                                                                report.penilaian === 'Cukup' ? 'bg-blue-600 text-white shadow-[0_4px_12px_-2px_rgba(37,99,235,0.3)]' :
+                                                                'bg-orange-600 text-white shadow-[0_4px_12px_-2px_rgba(234,88,12,0.3)]'
+                                                            }`}>
+                                                                {report.penilaian}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-gray-300 text-xs italic font-medium">Belum dinilai</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm text-gray-500 font-medium max-w-xs break-words">
+                                                        {report.catatan || <span className="text-gray-200">-</span>}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="5" className="px-6 py-12 text-center text-gray-400 italic">
+                                                    Belum ada riwayat laporan yang diajukan.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </SidebarAdmin>

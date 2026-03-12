@@ -119,13 +119,13 @@ const SidebarUser = ({ children }) => {
                                         <div className="flex items-center gap-2">
                                             <div className="w-1.5 h-1.5 rounded-full bg-[#D4BB76]"></div>
                                             <p className="text-xs font-semibold text-[#D4BB76] truncate">
-                                                {user?.wilayah || '-'}
+                                                {user?.wilayah || 'Kantor Balai TNGM'}
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <div className="w-1.5 h-1.5 rounded-full bg-[#D4BB76]/60"></div>
                                             <p className="text-xs font-medium text-[#D4BB76]/80 truncate" >
-                                                {user?.resor || '-'}
+                                                {user?.resor || 'Pusat (Non-Resor)'}
                                             </p>
                                         </div>
                                     </div>

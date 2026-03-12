@@ -81,8 +81,57 @@ const submitLaporan = async (req, res) => {
 const getdetaillaporan = async (req, res) => {
     try {
         const { id } = req.params;
+        const { source } = req.query; // 'internal' | 'eksternal' | 'mitra'
         const user = req.user;
 
+        // Jika laporan dari eksternal/mitra, query tabel laporan_eksternal
+        if (source === 'eksternal' || source === 'mitra') {
+            const [rows] = await db.execute(
+                `SELECT 
+                    e.id, e.judul_laporan as judul, e.jenis_pengirim,
+                    e.nama_pengirim, e.instansi_pengirim, e.email_pengirim,
+                    e.tanggal_berakhir, e.created_at, e.keterangan,
+                    e.file_dokumen, e.file_lampiran, e.file_output,
+                    e.status, e.catatan,
+                    k.nama_kategori as jenis_kategori,
+                    w.nama_wilayah
+                 FROM laporan_eksternal e
+                 LEFT JOIN kategori k ON e.kategori_id = k.id
+                 LEFT JOIN wilayah w ON e.wilayah_id = w.id
+                 WHERE e.id = ?`,
+                [id]
+            );
+
+            if (rows.length === 0) {
+                return res.status(404).json({ message: 'Laporan tidak ditemukan' });
+            }
+
+            const row = rows[0];
+            return res.json({
+                id: row.id,
+                judul: row.judul,
+                jenis: row.jenis_kategori || '-',
+                jenis_value: row.jenis_pengirim,
+                tanggal_berakhir: row.tanggal_berakhir,
+                tanggal_buat: row.created_at,
+                wilayah: row.nama_wilayah || 'Balai TNGM',
+                resor: row.instansi_pengirim || '-',
+                keterangan: row.keterangan,
+                status: row.status,
+                penilaian: null,
+                file_dokumen: row.file_dokumen,
+                foto_lampiran: row.file_lampiran, // Map file_lampiran to foto_lampiran for external
+                file_output: row.file_output,
+                pelapor: row.nama_pengirim,
+                instansi: row.instansi_pengirim,
+                email: row.email_pengirim,
+                tipe: row.jenis_pengirim,
+                adminMessage: row.catatan || null,
+                is_mutasi: false
+            });
+        }
+
+        // Default: query laporan_internal
         const query = `
             SELECT 
                 l.id, l.judul, l.jenis_laporan, l.tanggal_berakhir, l.created_at, l.keterangan,
@@ -105,9 +154,7 @@ const getdetaillaporan = async (req, res) => {
         }
 
         const row = rows[0];
-
-        // Format response
-        const reportDetail = {
+        res.json({
             id: row.id,
             judul: row.judul,
             jenis: row.jenis_laporan === 'A' ? 'Laporan A' : 'Laporan B',
@@ -125,14 +172,13 @@ const getdetaillaporan = async (req, res) => {
             file_output: row.file_output,
             pelapor: row.nama_pelapor,
             adminMessage: row.catatan || null
-        };
-
-        res.json(reportDetail);
+        });
     } catch (error) {
         console.error('Get Detail Laporan Error:', error);
         res.status(500).json({ message: 'Gagal mengambil detail laporan' });
     }
 };
+
 
 /**
  * [UMUM] Fungsi untuk memuat pilihan isian formulir
@@ -399,7 +445,8 @@ const logActivity = async (userId, laporanId, action, description) => {
 
 
 // Import pdfService at the top level
-const { generateTandaTerimaPDF } = require('../services/pdfService');
+const { generateTandaTerimaPDF, generateESertifikatPDF } = require('../services/pdfService');
+
 const { hitungPenilaian } = require('../utils/penilaian');
 
 // verifiasi laporan
@@ -499,22 +546,52 @@ const verifyLaporan = async (req, res) => {
             }
             laporan = rows[0];
 
-            // Update status (TIDAK generate PDF untuk laporan eksternal dari admin)
-            await db.execute(
-                'UPDATE laporan_eksternal SET status = ?, catatan = ? WHERE id = ?',
-                [status, catatan || '', id]
-            );
+            let eSertifikatFilename = null;
+
+            if (status === 'Approved') {
+                try {
+                    // Generate E-Sertifikat
+                    const nomorSertifikat = `${new Date().getFullYear()}${String(id).padStart(5, '0')}`;
+                    const sertifikatData = {
+                        nama_penerima: laporan.nama_pengirim,
+                        nama_instansi: laporan.instansi_pengirim || laporan.nama_pengirim,
+                        judul_laporan: laporan.judul_laporan,
+                        jenis_laporan: laporan.jenis_pengirim === 'mitra' ? 'Laporan Mitra' : 'Laporan Eksternal',
+                        nama_admin: user.nama,
+                        nomor_sertifikat: nomorSertifikat,
+                        tanggal_terbit: new Date().toLocaleDateString('id-ID', {
+                            day: 'numeric', month: 'long', year: 'numeric'
+                        })
+                    };
+
+                    eSertifikatFilename = await generateESertifikatPDF(sertifikatData);
+
+                    // Update status + simpan e-sertifikat di kolom file_output (agar file_lampiran asli tetap ada)
+                    await db.execute(
+                        'UPDATE laporan_eksternal SET status = ?, catatan = ?, file_output = ? WHERE id = ?',
+                        [status, catatan || '', eSertifikatFilename, id]
+                    );
+                } catch (pdfError) {
+                    console.error('E-Sertifikat Generation Failed:', pdfError);
+                    return res.status(500).json({
+                        message: 'Gagal membuat e-sertifikat. Status tidak berubah.',
+                        errorDetail: pdfError.message || pdfError.toString()
+                    });
+                }
+            } else {
+                // Jika Rejected
+                await db.execute(
+                    'UPDATE laporan_eksternal SET status = ?, catatan = ? WHERE id = ?',
+                    [status, catatan || '', id]
+                );
+            }
 
             // Log Activity (Actor: Admin)
             const desc = status === 'Approved'
-                ? `Laporan Eksternal/Mitra "${laporan.judul_laporan}" telah disetujui oleh admin.`
+                ? `Laporan Eksternal/Mitra "${laporan.judul_laporan}" telah disetujui. E-Sertifikat diterbitkan.`
                 : `Laporan Eksternal/Mitra "${laporan.judul_laporan}" ditolak. Alasan: ${catatan || '-'}`;
 
             const action = status === 'Approved' ? 'APPROVE' : 'REJECT';
-            // Note: logging ini menggunakan laporan_id. 
-            // Namun struktur activity_log tampaknya ditujukan utk laporan_internal.
-            // Solusi sementara: log tanpa laporan_id untuk laporan eksternal (dianggap umum/null) atau menambahkan kolom.
-            // Kita log tanpa laporan_id agar tak terjadi foreign key error.
             try {
                 await db.execute(
                     'INSERT INTO activity_log (user_id, action, description) VALUES (?, ?, ?)',
@@ -525,7 +602,8 @@ const verifyLaporan = async (req, res) => {
             }
 
             res.json({
-                message: `Laporan eksternal berhasil diubah status menjadi ${status}`
+                message: `Laporan eksternal berhasil diubah status menjadi ${status}`,
+                file_output: eSertifikatFilename
             });
 
         } else {
@@ -646,62 +724,90 @@ const getAllPendingReports = async (req, res) => {
 const getAdminDashboardStats = async (req, res) => {
     try {
         const { month, year } = req.query;
-        let whereClause = '';
-        let resorWhereClause = '';
-        let queryParams = [];
+        const user = req.user;
+
+        // Build dynamic WHERE clause for laporan_internal
+        let internalWhere = "WHERE status IN ('Pending', 'Approved', 'Rejected')";
+        let internalParams = [];
+
+        // Build dynamic WHERE clause for laporan_eksternal
+        let eksternalWhere = "WHERE status IN ('Pending', 'Approved', 'Rejected')";
+        let eksternalParams = [];
 
         if (month && year) {
-            whereClause = "WHERE status IN ('Pending', 'Approved', 'Rejected') AND MONTH(created_at) = ? AND YEAR(created_at) = ?";
-            resorWhereClause = "AND MONTH(l.created_at) = ? AND YEAR(l.created_at) = ?";
-            queryParams.push(month, year);
+            internalWhere  += " AND MONTH(created_at) = ? AND YEAR(created_at) = ?";
+            eksternalWhere += " AND MONTH(created_at) = ? AND YEAR(created_at) = ?";
+            internalParams.push(month, year);
+            eksternalParams.push(month, year);
         } else if (year) {
-            whereClause = "WHERE status IN ('Pending', 'Approved', 'Rejected') AND YEAR(created_at) = ?";
-            resorWhereClause = "AND YEAR(l.created_at) = ?";
-            queryParams.push(year);
+            internalWhere  += " AND YEAR(created_at) = ?";
+            eksternalWhere += " AND YEAR(created_at) = ?";
+            internalParams.push(year);
+            eksternalParams.push(year);
         } else if (month) {
-            whereClause = "WHERE status IN ('Pending', 'Approved', 'Rejected') AND MONTH(created_at) = ?";
-            resorWhereClause = "AND MONTH(l.created_at) = ?";
-            queryParams.push(month);
-        } else {
-            whereClause = "WHERE status IN ('Pending', 'Approved', 'Rejected')";
-            resorWhereClause = "";
+            internalWhere  += " AND MONTH(created_at) = ?";
+            eksternalWhere += " AND MONTH(created_at) = ?";
+            internalParams.push(month);
+            eksternalParams.push(month);
         }
 
-        const user = req.user;
+        // Admin wilayah hanya melihat laporan dalam wilayahnya (hanya laporan_internal)
         if (user.role === 'admin_wilayah' || user.role === 'kepala_wilayah') {
-            whereClause += " AND wilayah_id = ?";
-            resorWhereClause += " AND l.wilayah_id = ?";
-            queryParams.push(user.wilayah_id);
-
-            // Because resor stats require parameters twice if there's month/year
-            // But db.execute doesn't easily duplicate params cleanly without mapping.
-            // A safer approach for resorStatsQuery is to pass parameters again.
+            internalWhere += " AND wilayah_id = ?";
+            internalParams.push(user.wilayah_id);
+            // laporan_eksternal tidak punya wilayah, jadi untuk admin wilayah: eksklusikan
+            eksternalWhere += " AND 1=0";
         }
 
+        // Gabungkan count dari kedua tabel menggunakan UNION ALL
         const query = `
-            SELECT 
-                COUNT(*) as total,
-                SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending,
-                SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as approved,
-                SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) as rejected
-            FROM laporan_internal 
-            ${whereClause}
+            SELECT
+                SUM(total) as total,
+                SUM(pending) as pending,
+                SUM(approved) as approved,
+                SUM(rejected) as rejected
+            FROM (
+                SELECT
+                    COUNT(*) as total,
+                    SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending,
+                    SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as approved,
+                    SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) as rejected
+                FROM laporan_internal
+                ${internalWhere}
+
+                UNION ALL
+
+                SELECT
+                    COUNT(*) as total,
+                    SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending,
+                    SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as approved,
+                    SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) as rejected
+                FROM laporan_eksternal
+                ${eksternalWhere}
+            ) combined
         `;
 
-        const [rows] = await db.execute(query, queryParams);
+        const combinedParams = [...internalParams, ...eksternalParams];
+        const [rows] = await db.execute(query, combinedParams);
         const stats = rows[0];
 
-        // Duplicate params for second query
+        // Resor stats tetap dari laporan_internal saja
         let resorQueryParams = [];
         if (month && year) resorQueryParams.push(month, year);
         else if (year) resorQueryParams.push(year);
         else if (month) resorQueryParams.push(month);
 
-        let resorFilterQuery = "";
+        let resorWhereClause = '';
+        let resorFilterQuery = '';
+        if (month && year) resorWhereClause = "AND MONTH(l.created_at) = ? AND YEAR(l.created_at) = ?";
+        else if (year) resorWhereClause = "AND YEAR(l.created_at) = ?";
+        else if (month) resorWhereClause = "AND MONTH(l.created_at) = ?";
+
         if (user.role === 'admin_wilayah' || user.role === 'kepala_wilayah') {
-            resorQueryParams.push(user.wilayah_id); // Untuk l.wilayah_id di ON clause
+            resorQueryParams.push(user.wilayah_id);
+            resorWhereClause += " AND l.wilayah_id = ?";
             resorFilterQuery = "WHERE r.wilayah_id = ?";
-            resorQueryParams.push(user.wilayah_id); // Untuk r.wilayah_id di WHERE clause
+            resorQueryParams.push(user.wilayah_id);
         }
 
         const resorStatsQuery = `
@@ -721,7 +827,6 @@ const getAdminDashboardStats = async (req, res) => {
         `;
         const [resorRows] = await db.execute(resorStatsQuery, resorQueryParams);
 
-        // Berikan warna berbeda-beda tiap resor agar mudah dibedakan di chart
         const predefinedColors = ['#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4', '#84cc16'];
         const resorStats = resorRows.map((row, index) => ({
             name: row.name,
@@ -742,6 +847,7 @@ const getAdminDashboardStats = async (req, res) => {
         res.status(500).json({ message: 'Gagal mengambil data statistik dashboard admin' });
     }
 };
+
 
 //Menampilkan aktivitas admin (dashboard admin)
 /**
@@ -904,7 +1010,7 @@ const getAllApprovedReports = async (req, res) => {
             SELECT 
                 e.id, e.judul_laporan as judul, 
                 k.nama_kategori as jenis, 
-                e.created_at as tanggal, e.status, e.file_dokumen as file_laporan, e.file_lampiran as file_output, NULL as penilaian,
+                e.created_at as tanggal, e.status, e.file_dokumen as file_laporan, e.file_output as file_output, NULL as penilaian,
                 e.resor_id as report_resor_id,
                 CASE WHEN e.resor_id IS NULL AND e.wilayah_id = 1 THEN 'Balai TNGM' ELSE COALESCE(re.nama_resor, we.nama_wilayah) END as wilayah,
                 e.nama_pengirim as pelapor, NULL as current_resor_id,
@@ -921,9 +1027,14 @@ const getAllApprovedReports = async (req, res) => {
         `;
 
         // Dieksekusi / dijalankan ke database MySQL
-        const [reports] = await db.execute(query, queryParams);
+        const [rows] = await db.execute(query, queryParams);
         
-        // Hasil json dilempar ke pengguna/frontend
+        // Hasil diproses untuk mendeteksi mutasi
+        const reports = rows.map(row => ({
+            ...row,
+            is_mutasi: row.report_resor_id && row.current_resor_id ? row.report_resor_id !== row.current_resor_id : false
+        }));
+
         res.json(reports);
     } catch (error) {
         console.error('Get Approved Reports Error:', error);
@@ -1191,6 +1302,57 @@ const uploadSusulan = async (req, res) => {
     }
 };
 
+/**
+ * [EKSTERNAL/MITRA] Ambil riwayat laporan berdasarkan email pengirim dari JWT token
+ */
+const getRiwayatEksternal = async (req, res) => {
+    try {
+        const { email } = req.user;
+
+        const [rows] = await db.execute(
+             `SELECT 
+                e.id, e.judul_laporan as judul, e.jenis_pengirim, e.instansi_pengirim,
+                e.created_at as tanggal, e.status, e.catatan,
+                e.file_dokumen, e.file_lampiran, e.file_output,
+                k.nama_kategori as jenis
+             FROM laporan_eksternal e
+             LEFT JOIN kategori k ON e.kategori_id = k.id
+             WHERE e.email_pengirim = ?
+             ORDER BY e.created_at DESC`,
+            [email]
+        );
+
+        const reports = rows.map(row => {
+            // Logika Sertifikat: Cek file_output dulu (modern), jika tidak ada cek file_lampiran (legacy)
+            let certFile = null;
+            if (row.status === 'approved') {
+                if (row.file_output) {
+                    certFile = row.file_output;
+                } else if (row.file_lampiran && row.file_lampiran.startsWith('ESertifikat_')) {
+                    certFile = row.file_lampiran;
+                }
+            }
+
+            return {
+                id: row.id,
+                judul: row.judul,
+                jenis: row.jenis,
+                tipe: row.jenis_pengirim === 'mitra' ? 'Mitra' : 'Eksternal',
+                tanggal: row.tanggal,
+                status: row.status === 'approved' ? 'Approved' : row.status === 'rejected' ? 'Rejected' : 'Pending',
+                catatan: row.catatan || null,
+                file_sertifikat: certFile,
+                file_dokumen: row.file_dokumen,
+            };
+        });
+
+        res.json(reports);
+    } catch (error) {
+        console.error('Get Riwayat Eksternal Error:', error);
+        res.status(500).json({ message: 'Gagal mengambil riwayat laporan' });
+    }
+};
+
 module.exports = {
     submitLaporan,
     getdetaillaporan,
@@ -1208,5 +1370,6 @@ module.exports = {
     submitLaporanEksternal,
     submitLaporanMitra,
     inputArsipLama,
-    uploadSusulan
+    uploadSusulan,
+    getRiwayatEksternal
 };

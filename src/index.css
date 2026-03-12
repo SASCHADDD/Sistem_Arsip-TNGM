@@ -5,6 +5,10 @@
 /* =========================
    GLOBAL RESET & FONDASI
    ========================= */
+html {
+  scroll-behavior: smooth;
+}
+
 html,
 body,
 #root {
@@ -39,8 +43,9 @@ body {
    ========================= */
 a {
   font-weight: 500;
-  color: #eafff1;
+  color: #064e3b; /* text-emerald-900 for better contrast */
   text-decoration: none;
+  transition: color 0.2s ease;
 }
 
 a:hover {

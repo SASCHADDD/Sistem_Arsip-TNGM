@@ -15,10 +15,12 @@ app.use(express.json());
 
 const laporanRoutes = require('./routes/Laporan.Routes');
 const userRoutes = require('./routes/User.Routes');
+const eksternalRoutes = require('./routes/Eksternal.Routes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/laporan', laporanRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/eksternal', eksternalRoutes);
 
 const path = require('path'); // Ensure path is imported
 app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {

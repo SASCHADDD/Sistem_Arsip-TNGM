@@ -6,13 +6,16 @@ export const MenuCard = ({ title, description, path }) => {
     const navigate = useNavigate()
 
     return (
-        <div className="bg-white rounded-3xl p-8 flex flex-col items-center h-125 border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(212,187,118,0.2)] hover:border-[#D4BB76]/50 duration-500">
+        <div className="bg-white rounded-4xl p-10 flex flex-col items-center border border-slate-100 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.03)] transition-all duration-500 hover:shadow-[0_40px_80px_-15px_rgba(0,0,0,0.1)] group/card">
             {/* Top Content: Logo & Text */}
-            <div className="flex-1 flex flex-col items-center justify-center text-center w-full">
-                <img src={logo} alt="Logo" className="h-24 w-auto object-contain mb-6" />
-                <div className="space-y-3">
-                    <h3 className="text-2xl font-bold text-green-800 font-graduate tracking-wide">{title}</h3>
-                    <p className="text-green-700/80 font-medium leading-relaxed px-4">
+            <div className="flex flex-col items-center text-center w-full">
+                <div className="relative mb-10">
+                    <div className="absolute -inset-4 bg-green-50 rounded-full blur-xl scale-0 group-hover/card:scale-100 transition-transform duration-700"></div>
+                    <img src={logo} alt="Logo" className="relative h-20 w-auto object-contain transition-transform duration-700 group-hover/card:scale-110" />
+                </div>
+                <div className="space-y-4">
+                    <h3 className="text-xl font-bold text-slate-900 font-graduate tracking-wide">{title}</h3>
+                    <p className="text-sm text-slate-400 font-semibold leading-relaxed px-2 uppercase tracking-widest">
                         {description}
                     </p>
                 </div>

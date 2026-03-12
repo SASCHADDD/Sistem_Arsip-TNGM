@@ -1,11 +1,9 @@
 import { useNavigate } from "react-router-dom"
 import { useState } from "react"
-import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
 import logo from "../assets/logo-tngm.png"
 import { Eye, EyeOff } from "lucide-react"
 import { login } from "../api/auth"
-
 const Login = () => {
     const navigate = useNavigate()
     const [loading, setLoading] = useState(false);
@@ -26,14 +24,16 @@ const Login = () => {
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
 
-            // Navigate based on role
+            // Navigate based on role (Strictly Internal)
             if (data.user.role === 'staff') {
                 navigate('/user/dashboard');
             } else if (['admin_balai', 'admin_wilayah', 'kepala_wilayah'].includes(data.user.role)) {
                 navigate('/admin/dashboard');
             } else {
-                // Default fallback
-                navigate('/admin/dashboard');
+                // If somehow an external user gets through, force logout and show error
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                setError("Akses ditolak. Silakan gunakan portal login yang sesuai.");
             }
         } catch (err) {
             setError(typeof err === 'string' ? err : 'Login gagal');
@@ -44,7 +44,6 @@ const Login = () => {
 
     return (
         <div className="min-h-screen flex flex-col">
-            <Navbar />
 
             <main className="flex-1 flex items-center justify-center p-8">
                 <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-10 flex flex-col items-center w-full max-w-md border border-white/20 shadow-xl">

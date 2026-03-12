@@ -104,4 +104,67 @@ const generateTandaTerimaPDF = async (data) => {
 };
 
 // Mengekspor fungsi ini agar file lainnya bisa menggunakan / meng-import rutin `generateTandaTerimaPDF` ini dari file lain.
-module.exports = {generateTandaTerimaPDF};
+
+/**
+ * Fungsi: Membuat file PDF E-Sertifikat untuk laporan Mitra/Eksternal yang disetujui
+ * @param {Object} data - Data sertifikat: nama_penerima, nama_instansi, judul_laporan, jenis_laporan, nama_admin, nomor_sertifikat, tanggal_terbit
+ * @returns {Promise<string>} - Nama file PDF yang dihasilkan
+ */
+const generateESertifikatPDF = async (data) => {
+    try {
+        const templatePath = path.join(__dirname, '../suratpengantar/e_sertifikat.html');
+        let htmlContent = fs.readFileSync(templatePath, 'utf8');
+
+        htmlContent = htmlContent.replace(/{{nama_penerima}}/g, data.nama_penerima || '-');
+        htmlContent = htmlContent.replace(/{{nama_instansi}}/g, data.nama_instansi || '-');
+        htmlContent = htmlContent.replace(/{{judul_laporan}}/g, data.judul_laporan || '-');
+        htmlContent = htmlContent.replace(/{{jenis_laporan}}/g, data.jenis_laporan || 'Laporan');
+        htmlContent = htmlContent.replace(/{{nama_admin}}/g, data.nama_admin || 'Admin TNGM');
+        htmlContent = htmlContent.replace(/{{nomor_sertifikat}}/g, data.nomor_sertifikat || Date.now());
+        htmlContent = htmlContent.replace(/{{tanggal_terbit}}/g, data.tanggal_terbit || '-');
+
+        // 1.5. MENGISI LOGO (BASE64)
+        // Membaca logo dari assets dan mengubahnya menjadi Base64 agar bisa muncul di PDF
+        const assetsDir = path.join(__dirname, '../../src/assets');
+        
+        // Logo TNGM
+        const logoTngmPath = path.join(assetsDir, 'logo-tngm.png');
+        if (fs.existsSync(logoTngmPath)) {
+            const logoBase64 = fs.readFileSync(logoTngmPath, 'base64');
+            htmlContent = htmlContent.replace(/{{logo_tngm_base64}}/g, `data:image/png;base64,${logoBase64}`);
+        }
+
+        const browser = await puppeteer.launch({
+            headless: 'new',
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        });
+        const page = await browser.newPage();
+        await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+
+        const outputDir = path.join(__dirname, '../../uploads/laporan/output');
+        if (!fs.existsSync(outputDir)) {
+            fs.mkdirSync(outputDir, { recursive: true });
+        }
+
+        const timestamp = Date.now();
+        const safeTitle = (data.judul_laporan || 'sertifikat').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const filename = `ESertifikat_${safeTitle}_${timestamp}.pdf`;
+        const outputPath = path.join(outputDir, filename);
+
+        await page.pdf({
+            path: outputPath,
+            format: 'A4',
+            landscape: true,
+            printBackground: true,
+            margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' }
+        });
+
+        await browser.close();
+        return filename;
+    } catch (error) {
+        console.error('Error generating E-Sertifikat PDF:', error);
+        throw error;
+    }
+};
+
+module.exports = { generateTandaTerimaPDF, generateESertifikatPDF };

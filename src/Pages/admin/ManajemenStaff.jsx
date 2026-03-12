@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SidebarAdmin from "../../components/SidebarAdmin";
-import { Plus, Users, Search, ChevronRight, Loader2, Pencil, Trash2 } from "lucide-react";
-import { getAllStaff, updateStaff, deleteStaff } from "../../api/user";
+import { Plus, Users, Search, ChevronRight, Loader2, Pencil, Trash2, FileDown, Power, UserCheck, UserX } from "lucide-react";
+import { getAllStaff, updateStaff, getStaffAssessmentRekap } from "../../api/user";
 import axios from "../../api/axios";
+import Swal from 'sweetalert2';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 const ManajemenStaff = () => {
     const navigate = useNavigate();
@@ -11,9 +14,10 @@ const ManajemenStaff = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [filterResor, setFilterResor] = useState("");
+    const [filterRole, setFilterRole] = useState("");
     const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
     const [selectedStaff, setSelectedStaff] = useState(null);
 
     // Form state for new/edit staff
@@ -22,7 +26,8 @@ const ManajemenStaff = () => {
         email: "",
         password: "",
         wilayah_id: "",
-        resor_id: ""
+        resor_id: "",
+        is_active: true
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formError, setFormError] = useState("");
@@ -77,8 +82,8 @@ const ManajemenStaff = () => {
                 nama: "",
                 email: "",
                 password: "",
-                wilayah_id: "",
-                resor_id: ""
+                resor_id: "",
+                is_active: true
             });
             fetchData(); // Refresh table
         } catch (error) {
@@ -97,6 +102,7 @@ const ManajemenStaff = () => {
             await updateStaff(selectedStaff.id, formData);
             setIsEditModalOpen(false);
             fetchData();
+            Swal.fire('Berhasil', 'Data staff berhasil diperbarui', 'success');
         } catch (error) {
             setFormError(error);
         } finally {
@@ -104,15 +110,20 @@ const ManajemenStaff = () => {
         }
     };
 
-    const handleDeleteStaff = async () => {
+    const handleToggleStatus = async () => {
         setIsSubmitting(true);
         setFormError("");
         try {
-            await deleteStaff(selectedStaff.id);
-            setIsDeleteModalOpen(false);
+            await updateStaff(selectedStaff.id, {
+                ...selectedStaff,
+                is_active: !selectedStaff.is_active
+            });
+            setIsStatusModalOpen(false);
             fetchData();
+            Swal.fire('Berhasil', `Akun telah ${!selectedStaff.is_active ? 'diaktifkan' : 'dinonaktifkan'}`, 'success');
         } catch (error) {
             setFormError(error);
+            Swal.fire('Gagal', error.response?.data?.message || 'Gagal mengubah status akun', 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -125,16 +136,94 @@ const ManajemenStaff = () => {
             email: staff.email,
             password: "", // Kosongkan password saat edit kecuali user ingin ganti
             wilayah_id: staff.wilayah_id || "",
-            resor_id: staff.resor_id || ""
+            resor_id: staff.resor_id || "",
+            is_active: staff.is_active
         });
         setFormError("");
         setIsEditModalOpen(true);
     };
 
-    const openDeleteModal = (staff) => {
+    const openStatusModal = (staff) => {
         setSelectedStaff(staff);
         setFormError("");
-        setIsDeleteModalOpen(true);
+        setIsStatusModalOpen(true);
+    };
+
+    const handleExportAssessment = async () => {
+        try {
+            Swal.fire({
+                title: 'Menyiapkan Data...',
+                html: 'Mohon tunggu sejenak sementara kami mengumpulkan data penilaian.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            const data = await getStaffAssessmentRekap();
+            
+            if (!data || data.length === 0) {
+                Swal.fire('Info', 'Tidak ada data penilaian untuk diekspor', 'info');
+                return;
+            }
+
+            // FILTER: Sinkronasikan dengan filter UI agar data yang didownload sesuai yang dilihat Admin
+            const filteredData = data.filter(staff => {
+                const matchesSearch = staff.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    staff.email.toLowerCase().includes(searchTerm.toLowerCase());
+
+                const matchesResor = filterResor === "" ||
+                    (filterResor === "none" ? !staff.resor : staff.resor === filterResor);
+
+                const matchesRole = filterRole === "" || staff.role === filterRole;
+
+                return matchesSearch && matchesResor && matchesRole;
+            });
+
+            if (filteredData.length === 0) {
+                Swal.fire('Info', 'Data hasil filter kosong, tidak ada yang bisa diekspor.', 'info');
+                return;
+            }
+
+            // Transform data untuk Excel
+            const excelData = filteredData.map(staff => ({
+                'Nama Staff': staff.nama,
+                'Email': staff.email,
+                'Role': staff.role === 'admin_wilayah' ? 'Admin Wilayah' : 'Staff',
+                'Wilayah': staff.wilayah,
+                'Resor': staff.resor || 'Kantor Balai / Lainnya',
+                'Status Akun': staff.is_active ? 'Aktif' : 'Nonaktif',
+                'Total Laporan': staff.total_laporan,
+                'Disetujui': staff.approved,
+                'Ditolak': staff.rejected,
+                'Pending': staff.pending,
+                'Hasil: BAIK': staff.baik,
+                'Hasil: CUKUP': staff.cukup,
+                'Hasil: KURANG': staff.kurang,
+                'Skor Rata-rata (1-3)': staff.skor_rata_rata
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Penilaian Staff");
+
+            // Atur lebar kolom otomatis (opsional tapi bagus)
+            const wscols = [
+                {wch: 25}, {wch: 25}, {wch: 15}, {wch: 20}, {wch: 20},
+                {wch: 12}, {wch: 10}, {wch: 10}, {wch: 10},
+                {wch: 12}, {wch: 12}, {wch: 12}, {wch: 18}
+            ];
+            worksheet['!cols'] = wscols;
+
+            const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+            const finalData = new Blob([excelBuffer], { type: 'application/octet-stream' });
+            saveAs(finalData, `Rekap_Penilaian_Staf_TNGM_${new Date().toLocaleDateString('id-ID')}.xlsx`);
+
+            Swal.fire('Berhasil', 'Dataset penilaian staf telah diunduh.', 'success');
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Error', 'Gagal mengekspor data penilaian', 'error');
+        }
     };
 
     const filteredStaff = staffList.filter(staff => {
@@ -144,7 +233,9 @@ const ManajemenStaff = () => {
         const matchesResor = filterResor === "" ||
             (filterResor === "none" ? !staff.nama_resor : staff.nama_resor === filterResor);
 
-        return matchesSearch && matchesResor;
+        const matchesRole = filterRole === "" || staff.role === filterRole;
+
+        return matchesSearch && matchesResor && matchesRole;
     });
 
     return (
@@ -163,13 +254,22 @@ const ManajemenStaff = () => {
                         </p>
                     </div>
 
-                    <button
-                        onClick={() => setIsRegisterModalOpen(true)}
-                        className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all shadow-sm"
-                    >
-                        <Plus size={20} />
-                        Tambah Staf
-                    </button>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={handleExportAssessment}
+                            className="bg-white hover:bg-gray-100 text-green-700 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-md group border border-green-100"
+                        >
+                            <FileDown size={20} className="group-hover:translate-y-0.5 transition-transform" />
+                            Ekspor Penilaian
+                        </button>
+                        <button
+                            onClick={() => setIsRegisterModalOpen(true)}
+                            className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-md"
+                        >
+                            <Plus size={20} />
+                            Tambah Staf
+                        </button>
+                    </div>
                 </div>
 
                 {/* Table Section */}
@@ -191,8 +291,19 @@ const ManajemenStaff = () => {
                                 <option value="none">Belum Ditentukan (Kantor & Lainnya)</option>
                             </select>
 
+                            {/* Filter Jabatan */}
+                            <select
+                                className="select select-bordered bg-white border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all font-medium text-slate-700 min-w-[150px]"
+                                value={filterRole}
+                                onChange={(e) => setFilterRole(e.target.value)}
+                            >
+                                <option value="">Semua Jabatan</option>
+                                <option value="staff">Staff</option>
+                                <option value="admin_wilayah">Admin Wilayah</option>
+                            </select>
+
                             {/* Search */}
-                            <div className="relative w-full sm:w-72">
+                            <div className="relative w-full sm:w-64">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                                 <input
                                     type="text"
@@ -255,6 +366,15 @@ const ManajemenStaff = () => {
                                                                 Staff
                                                             </span>
                                                         )}
+                                                        {staff.is_active ? (
+                                                            <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800 border border-green-200">
+                                                                Aktif
+                                                            </span>
+                                                        ) : (
+                                                            <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500 border border-gray-200">
+                                                                Nonaktif
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
@@ -279,11 +399,11 @@ const ManajemenStaff = () => {
                                                         <Pencil size={16} />
                                                     </button>
                                                     <button
-                                                        onClick={() => openDeleteModal(staff)}
-                                                        className="p-1.5 text-red-500 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
-                                                        title="Hapus Staff"
+                                                        onClick={() => openStatusModal(staff)}
+                                                        className={`p-1.5 rounded-lg transition-colors ${staff.is_active ? 'text-gray-400 bg-gray-50 hover:bg-red-50 hover:text-red-500' : 'text-green-500 bg-green-50 hover:bg-green-100'}`}
+                                                        title={staff.is_active ? "Nonaktifkan Akun" : "Aktifkan Akun"}
                                                     >
-                                                        <Trash2 size={16} />
+                                                        {staff.is_active ? <UserX size={16} /> : <UserCheck size={16} />}
                                                     </button>
                                                 </div>
                                             </td>
@@ -508,6 +628,18 @@ const ManajemenStaff = () => {
                                 </div>
                             </div>
 
+                            <div className="flex items-center gap-2 mt-4 ml-1">
+                                <label className="flex items-center cursor-pointer gap-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.is_active}
+                                        onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                                        className="checkbox checkbox-sm checkbox-success"
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">Akun Aktif</span>
+                                </label>
+                            </div>
+
                             <div className="pt-2 flex justify-end gap-3 mt-4">
                                 <button
                                     type="button"
@@ -533,40 +665,39 @@ const ManajemenStaff = () => {
                 </div>
             )}
 
-            {/* Modal Konfirmasi Hapus Staff */}
-            {isDeleteModalOpen && selectedStaff && (
+            {/* Modal Konfirmasi Status Staff */}
+            {isStatusModalOpen && selectedStaff && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200 text-center flex flex-col items-center p-8">
-                        <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-6">
-                            <Trash2 size={32} />
+                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-6 ${selectedStaff.is_active ? 'bg-orange-100 text-orange-500' : 'bg-green-100 text-green-500'}`}>
+                            {selectedStaff.is_active ? <UserX size={32} /> : <UserCheck size={32} />}
                         </div>
-                        <h3 className="font-bold text-xl text-slate-800 mb-2">Hapus Akun Staf?</h3>
-                        <p className="text-slate-500 text-sm mb-6">
-                            Anda yakin ingin menghapus akun staf atas nama <strong>{selectedStaff.nama}</strong>? Tindakan ini tidak dapat dibatalkan.
+                        <h3 className="font-bold text-xl text-slate-800 mb-2">
+                            {selectedStaff.is_active ? 'Nonaktifkan Akun?' : 'Aktifkan Akun?'}
+                        </h3>
+                        <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+                            {selectedStaff.is_active 
+                                ? `Akun atas nama ${selectedStaff.nama} tidak akan bisa login ke sistem, namun data laporannya tetap tersimpan.`
+                                : `Akun atas nama ${selectedStaff.nama} akan kembali memiliki akses masuk ke sistem.`
+                            }
                         </p>
-
-                        {formError && (
-                            <div className="w-full p-3 bg-red-50 text-red-600 text-xs rounded-xl border border-red-100 mb-6 text-left">
-                                {formError}
-                            </div>
-                        )}
 
                         <div className="flex justify-center gap-3 w-full">
                             <button
-                                onClick={() => setIsDeleteModalOpen(false)}
+                                onClick={() => setIsStatusModalOpen(false)}
                                 className="flex-1 py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-xl transition-colors"
                             >
                                 Batal
                             </button>
                             <button
-                                onClick={handleDeleteStaff}
+                                onClick={handleToggleStatus}
                                 disabled={isSubmitting}
-                                className="flex-1 py-2.5 bg-red-500 text-white font-medium hover:bg-red-600 rounded-xl transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+                                className={`flex-1 py-2.5 text-white font-medium rounded-xl transition-colors disabled:opacity-70 flex items-center justify-center gap-2 ${selectedStaff.is_active ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-600 hover:bg-green-700'}`}
                             >
                                 {isSubmitting ? (
-                                    <><Loader2 size={16} className="animate-spin" /> Menghapus...</>
+                                    <><Loader2 size={16} className="animate-spin" /> Memproses...</>
                                 ) : (
-                                    'Ya, Hapus'
+                                    selectedStaff.is_active ? 'Ya, Nonaktifkan' : 'Ya, Aktifkan'
                                 )}
                             </button>
                         </div>

@@ -35,8 +35,8 @@ const register = async (req, res) => {
         // Memasukkan data pendaftar baru tersebut ke dalam tabel "pengguna"
         const [result] = await db.execute(
             `INSERT INTO pengguna 
-            (nama, email, password, role, wilayah_id, resor_id) 
-            VALUES (?, ?, ?, ?, ?, ?)`,
+            (nama, email, password, role, wilayah_id, resor_id, is_active) 
+            VALUES (?, ?, ?, ?, ?, ?, 1)`,
             // Oleh sistem, jabatan langsung digembok baku secara otomatis ke 'staff'. NULL jika tidak memilih resor/wilayah
             [nama, email, hashedPassword, 'staff', wilayah_id || null, resor_id || null]
         );
@@ -183,6 +183,11 @@ const login = async (req, res) => {
             return res.status(401).json({ message: 'Email atau password salah' });
         }
 
+        // CEK STATUS AKTIF: Akun yang dinonaktifkan tidak boleh masuk
+        if (user.is_active === 0) {
+            return res.status(403).json({ message: 'Akun Anda telah dinonaktifkan. Silakan hubungi administrator.' });
+        }
+
         // Mengambil alat palu (bcrypt.compare) untuk membobol verifikasi dan membandingkan apakah
         // password tulisan polosan yang dimasukkan manusia (misal: "password123") itu sama artinya dengan 
         // password ruwet hasil enkripsi di database (misal: "$2a$10$Q7eY/8wL0kH...").
@@ -191,6 +196,14 @@ const login = async (req, res) => {
         // Jika salah sandi
         if (!validPassword) {
             return res.status(401).json({ message: 'Email atau password salah' });
+        }
+
+        // JALUR LOGIN INTERNAL: Hanya perbolehkan Staff atau Admin
+        const allowedInternalRoles = ['admin_balai', 'admin_wilayah', 'kepala_wilayah', 'staff'];
+        if (!allowedInternalRoles.includes(user.role)) {
+            return res.status(403).json({ 
+                message: 'Akses ditolak. Silakan gunakan portal login Eksternal atau Mitra untuk akun Anda.' 
+            });
         }
 
         // JIKA LOGIN BERHASIL: Buatkan Tiket/Karcis JALAN (Sign Token JWT)!
@@ -206,7 +219,7 @@ const login = async (req, res) => {
             },
             // Di-Stempel Asli oleh stempel server 
             process.env.JWT_SECRET || 'secret_key_rahasia',
-            { expiresIn: '10m' } // Berlaku (Hangus) Otomatis dalam Waktu 10 Menit dari sejak dicipatakan! (Sebagai sistem Security agar jika tertinggal lupa diliogout tidak dibajak orang)
+            { expiresIn: '10h' } // Berlaku (Hangus) Otomatis dalam Waktu 10 Jam
         );
 
         // Kembalikan 2 jawaban (Tiket Rahasia untuk dibekalkan browser di "saku celana - Localstorage" & Profil wujud nyata untuk ditampilin di layar)
@@ -277,11 +290,117 @@ const changePassword = async (req, res) => {
 const logout = async (req, res) => {
     // Karena sistem menggunakan JWT (dimana yang pegang tiket login hanya layar browser (FE)),
     // Maka backend tidak perlu mengingat apapun. Backend hanya menyetujui formalitas logout.
-    // Pekerjaan membersihkan tiket sungguhannya ada di layar React Frontend (localStorage.removeItem('token')).
+// Pekerjaan membersihkan tiket sungguhannya ada di layar React Frontend (localStorage.removeItem('token')).
     res.status(200).json({ message: 'Logout berhasil' });
 };
 
-// Mengekspor kumpulan Fungsi Keamanan ini agar dimanfaatkan oleh jalurnya via router (Jalur Pintu Masuk API di /server/routes/Auth.Routes.js)
+// ==========================================
+// AUTENTIKASI EKSTERNAL & MITRA (Akun Nyata dari Database)
+// ==========================================
+
+/**
+ * [EKSTERNAL/MITRA] Registrasi akun baru via API
+ * Digunakan sementara sebelum integrasi dengan sistem eksternal/mitra lain.
+ * Endpoint: POST /api/eksternal/register
+ * Body: { nama, email, password, instansi, role: 'eksternal'|'mitra' }
+ */
+const registerEksternal = async (req, res) => {
+    try {
+        const { nama, email, password, instansi, role } = req.body;
+
+        if (!nama || !email || !password || !instansi || !role) {
+            return res.status(400).json({ message: 'Semua field wajib diisi: nama, email, password, instansi, role' });
+        }
+
+        if (!['eksternal', 'mitra'].includes(role)) {
+            return res.status(400).json({ message: 'Role harus "eksternal" atau "mitra"' });
+        }
+
+        // Cek apakah email sudah terdaftar
+        const [existing] = await db.execute(
+            'SELECT id FROM pengguna WHERE email = ?', [email]
+        );
+        if (existing.length > 0) {
+            return res.status(400).json({ message: 'Email sudah terdaftar' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const [result] = await db.execute(
+            `INSERT INTO pengguna (nama, email, password, role, instansi) VALUES (?, ?, ?, ?, ?)`,
+            [nama, email, hashedPassword, role, instansi]
+        );
+
+        res.status(201).json({
+            message: `Akun ${role} berhasil didaftarkan`,
+            data: { id: result.insertId, nama, email, role, instansi }
+        });
+    } catch (error) {
+        console.error('Register Eksternal Error:', error);
+        res.status(500).json({ message: 'Terjadi kesalahan pada server' });
+    }
+};
+
+/**
+ * [EKSTERNAL/MITRA] Login dengan akun nyata dari database
+ * Endpoint: POST /api/eksternal/login
+ */
+const loginEksternal = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({ message: 'Email dan password wajib diisi' });
+        }
+
+        // Cari user di tabel pengguna dengan role eksternal atau mitra
+        const [users] = await db.execute(
+            `SELECT * FROM pengguna WHERE email = ? AND role IN ('eksternal', 'mitra')`,
+            [email]
+        );
+
+        const user = users[0];
+        if (!user) {
+            return res.status(401).json({ message: 'Email atau password salah' });
+        }
+
+        // Verifikasi password dengan bcrypt
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) {
+            return res.status(401).json({ message: 'Email atau password salah' });
+        }
+
+        // Buat JWT token dengan data user asli
+        const token = jwt.sign(
+            {
+                id: user.id,
+                email: user.email,
+                nama: user.nama,
+                instansi: user.instansi || '',
+                role: user.role   // 'eksternal' | 'mitra'
+            },
+            process.env.JWT_SECRET || 'secret_key_rahasia',
+            { expiresIn: '8h' }
+        );
+
+        res.status(200).json({
+            message: 'Login berhasil',
+            token,
+            user: {
+                id: user.id,
+                email: user.email,
+                nama: user.nama,
+                instansi: user.instansi || '',
+                role: user.role
+            }
+        });
+    } catch (error) {
+        console.error('Login Eksternal Error:', error);
+        res.status(500).json({ message: 'Terjadi kesalahan pada server' });
+    }
+};
+
+// Mengekspor kumpulan Fungsi Keamanan ini agar dimanfaatkan oleh jalurnya via router
 module.exports = {
     register,
     createAdmin,
@@ -289,5 +408,7 @@ module.exports = {
     uploadPhoto,
     login,
     changePassword,
-    logout
+    logout,
+    loginEksternal,
+    registerEksternal
 };

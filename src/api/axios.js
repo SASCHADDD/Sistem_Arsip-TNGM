@@ -11,7 +11,8 @@ const api = axios.create({
 // Request interceptor to add token
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('token');
+        // Cek token internal dulu, jika tidak ada cek eksternal/mitra
+        const token = localStorage.getItem('token') || localStorage.getItem('eksternal_token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -26,11 +27,16 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         // Jangan redirect ke / jika error berasal dari endpoint login
-        const isLoginRequest = error.config?.url === '/auth/login';
+        const config = error.config || {};
+        const isLoginRequest = config.url?.includes('/auth/login') || config.url?.includes('/auth/login-eksternal');
 
         if (!isLoginRequest && (error.response?.status === 401 || error.response?.status === 403)) {
-            localStorage.removeItem('token');
-            window.location.href = '/';
+            // Hanya hapus token internal jika status unauthorized
+            if (localStorage.getItem('token')) {
+                localStorage.removeItem('token');
+                window.location.href = '/';
+            }
+            // Untuk eksternal/mitra, biarkan page yang menangani auto-redirect via Auth Guard
         }
         return Promise.reject(error);
     }
