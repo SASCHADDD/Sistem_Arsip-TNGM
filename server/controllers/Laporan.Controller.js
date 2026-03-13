@@ -735,17 +735,17 @@ const getAdminDashboardStats = async (req, res) => {
         let eksternalParams = [];
 
         if (month && year) {
-            internalWhere  += " AND MONTH(created_at) = ? AND YEAR(created_at) = ?";
+            internalWhere += " AND MONTH(created_at) = ? AND YEAR(created_at) = ?";
             eksternalWhere += " AND MONTH(created_at) = ? AND YEAR(created_at) = ?";
             internalParams.push(month, year);
             eksternalParams.push(month, year);
         } else if (year) {
-            internalWhere  += " AND YEAR(created_at) = ?";
+            internalWhere += " AND YEAR(created_at) = ?";
             eksternalWhere += " AND YEAR(created_at) = ?";
             internalParams.push(year);
             eksternalParams.push(year);
         } else if (month) {
-            internalWhere  += " AND MONTH(created_at) = ?";
+            internalWhere += " AND MONTH(created_at) = ?";
             eksternalWhere += " AND MONTH(created_at) = ?";
             internalParams.push(month);
             eksternalParams.push(month);
@@ -967,14 +967,14 @@ const getAllApprovedReports = async (req, res) => {
             // LALU kodenya juga mengecualikan (membuang) laporan yang resor_id-nya Kosong (IS NOT NULL).
             // Kenapa? Karena Laporan dari "Balai TNGM" (pusat) resor_id-nya biasanya kosong/null, jadi ini memastikan
             // Admin Wilayah tidak bisa melihat data pusat (Balai TNGM) karena dia hanya menaungi resor-resor.
-            whereInternal += " AND l.wilayah_id = ? AND l.resor_id IS NOT NULL"; 
-            
+            whereInternal += " AND l.wilayah_id = ? AND l.resor_id IS NOT NULL";
+
             // 2. TAMBAHAN UNTUK LAPORAN EKSTERNAL / MITRA:
             // Admin Wilayah seharusnya sama sekali tidak boleh melihat laporan Eksternal / Mitra.
             // Ditambahkan kondisi "AND 1=0" artinya membuat statement ini menjadi false permanen 
             // sehingga query untuk laporan Eksternal akan selalu mereturn 0 data (kosong).
-            whereEksternal += " AND 1=0"; 
-            
+            whereEksternal += " AND 1=0";
+
             // Masukkan ID wilayah admin ke dalam parameter untuk menggantikan tanda tanya (?) di `whereInternal`
             queryParams.push(user.wilayah_id);
         }
@@ -1028,7 +1028,7 @@ const getAllApprovedReports = async (req, res) => {
 
         // Dieksekusi / dijalankan ke database MySQL
         const [rows] = await db.execute(query, queryParams);
-        
+
         // Hasil diproses untuk mendeteksi mutasi
         const reports = rows.map(row => ({
             ...row,
@@ -1310,7 +1310,7 @@ const getRiwayatEksternal = async (req, res) => {
         const { email } = req.user;
 
         const [rows] = await db.execute(
-             `SELECT 
+            `SELECT 
                 e.id, e.judul_laporan as judul, e.jenis_pengirim, e.instansi_pengirim,
                 e.created_at as tanggal, e.status, e.catatan,
                 e.file_dokumen, e.file_lampiran, e.file_output,
