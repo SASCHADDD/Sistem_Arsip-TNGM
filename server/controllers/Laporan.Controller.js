@@ -447,7 +447,7 @@ const logActivity = async (userId, laporanId, action, description) => {
 // Import pdfService at the top level
 const { generateTandaTerimaPDF, generateESertifikatPDF } = require('../services/pdfService');
 
-const { hitungPenilaian } = require('../utils/penilaian');
+const { hitungPenilaian } = require('../services/penilaian');
 
 // verifiasi laporan
 // verifiasi laporan
