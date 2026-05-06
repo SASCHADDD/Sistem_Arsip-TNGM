@@ -110,7 +110,6 @@ const DataLaporan = () => {
 
         // Transform data untuk excel agar lebih rapi
         const dataToExport = filteredReports.map(item => ({
-            'ID': item.id,
             'Judul Laporan': item.judul,
             'Jenis': item.jenis,
             'Pelapor/Instansi': item.pelapor,
@@ -118,8 +117,7 @@ const DataLaporan = () => {
             'Resor/Wilayah': item.resor || item.wilayah,
             'Tanggal Terima': new Date(item.tanggal).toLocaleDateString('id-ID'),
             'Status': 'Disetujui',
-            'Penilaian': item.penilaian || '-',
-            'ID Database': `${item.source_table}-${item.id}`
+            'Penilaian': item.penilaian || '-'
         }));
 
         const worksheet = XLSX.utils.json_to_sheet(dataToExport);

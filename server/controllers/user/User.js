@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt'); // Mengimpor bcrypt untuk fungsi hashing (sand
 
 /**
  * ==========================================
- * CONTROLLER: MANAJEMEN AKUN PENGGUNA (User.Controller.js)
+ * CONTROLLER: MANAJEMEN AKUN PENGGUNA (User.js)
  * ==========================================
  * File pengontrol ini mengurusi berbagai tindakan DARI SISI ADMIN terhadap akun-akun staf di bawahnya.
  * Seperti: menampilkan semua staf, melihat performa staf (detail), mengubah tempat penugasan (mutasi), 

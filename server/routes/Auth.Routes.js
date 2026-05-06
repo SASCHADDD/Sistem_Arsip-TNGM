@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/auth/Auth');
 const { verifyToken, authorizeRoles } = require('../middlewares/Auth.Middleware');
-const configureUpload = require('../middlewares/Upload.Middleware');
+const { configureUpload } = require('../middlewares/Upload.Middleware');
 const uploadProfile = configureUpload('profile');
 
 router.post('/register', authController.register);

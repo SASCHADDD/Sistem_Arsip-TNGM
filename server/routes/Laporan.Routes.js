@@ -10,31 +10,7 @@ const activityController = require('../controllers/laporan/Activity');
 const formController = require('../controllers/laporan/Form');
 
 const { verifyToken } = require('../middlewares/Auth.Middleware');
-const configureUpload = require('../middlewares/Upload.Middleware');
-
-const uploadLaporan = configureUpload('laporan');
-
-const handleUpload = (req, res, next) => {
-    const upload = uploadLaporan.fields([
-        { name: 'file_dokumen', maxCount: 1 },
-        { name: 'file_lampiran', maxCount: 1 }
-    ]);
-    upload(req, res, function (err) {
-        if (err) return res.status(400).json({ message: err.message || 'Gagal mengupload file' });
-        next();
-    });
-};
-
-const handleUploadEksternal = (req, res, next) => {
-    const upload = uploadLaporan.fields([
-        { name: 'file', maxCount: 1 },
-        { name: 'hardfile', maxCount: 1 }
-    ]);
-    upload(req, res, function (err) {
-        if (err) return res.status(400).json({ message: err.message || 'Gagal mengupload file eksternal' });
-        next();
-    });
-};
+const { configureUpload, handleUpload, handleUploadEksternal } = require('../middlewares/Upload.Middleware');
 
 // --- PUBLIC ROUTES (Form options) ---
 router.get('/form-options', formController.getFormOptions);

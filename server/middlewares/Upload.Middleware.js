@@ -72,6 +72,33 @@ const configureUpload = (subfolder) => {
     });
 };
 
-// Mengekspor fungsi perakit mesin upload ini 
-// agar bisa dipakai bebas dari file controller atau route lainnya.
-module.exports = configureUpload;
+const uploadLaporan = configureUpload('laporan');
+
+const handleUpload = (req, res, next) => {
+    const upload = uploadLaporan.fields([
+        { name: 'file_dokumen', maxCount: 1 },
+        { name: 'file_lampiran', maxCount: 1 }
+    ]);
+    upload(req, res, function (err) {
+        if (err) return res.status(400).json({ message: err.message || 'Gagal mengupload file' });
+        next();
+    });
+};
+
+const handleUploadEksternal = (req, res, next) => {
+    const upload = uploadLaporan.fields([
+        { name: 'file', maxCount: 1 },
+        { name: 'hardfile', maxCount: 1 }
+    ]);
+    upload(req, res, function (err) {
+        if (err) return res.status(400).json({ message: err.message || 'Gagal mengupload file eksternal' });
+        next();
+    });
+};
+
+// Mengekspor fungsi perakit mesin upload dan middleware khusus laporan
+module.exports = { 
+    configureUpload, 
+    handleUpload, 
+    handleUploadEksternal 
+};
