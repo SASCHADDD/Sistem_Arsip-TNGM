@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { loginEksternal, registerEksternal } = require('../controllers/Auth.Controller');
-const { getRiwayatEksternal } = require('../controllers/Laporan.Controller');
+const { loginEksternal, registerEksternal } = require('../controllers/auth/Auth');
+const { getRiwayatEksternal } = require('../controllers/laporan/Riwayat');
 const { verifyToken } = require('../middlewares/Auth.Middleware');
 
 // POST /api/eksternal/register – Daftarkan akun baru Eksternal/Mitra via API

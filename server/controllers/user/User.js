@@ -1,7 +1,14 @@
-const db = require('../config/database'); // Mengimpor koneksi database (MySQL)
+const db = require('../../config/database'); // Mengimpor koneksi database (MySQL)
 const bcrypt = require('bcrypt'); // Mengimpor bcrypt untuk fungsi hashing (sandi) password jika admin mengganti password akun staf
 
-
+/**
+ * ==========================================
+ * CONTROLLER: MANAJEMEN AKUN PENGGUNA (User.Controller.js)
+ * ==========================================
+ * File pengontrol ini mengurusi berbagai tindakan DARI SISI ADMIN terhadap akun-akun staf di bawahnya.
+ * Seperti: menampilkan semua staf, melihat performa staf (detail), mengubah tempat penugasan (mutasi), 
+ * hingga menghapus akun staf tersebut.
+ */
 
 // 1. FUNGSI MENAMPILKAN DAFTAR SELURUH STAF
 const getAllStaff = async (req, res) => {

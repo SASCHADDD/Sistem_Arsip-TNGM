@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const userController = require('../controllers/User.Controller');
+const userController = require('../controllers/user/User');
 const { verifyToken, authorizeRoles } = require('../middlewares/Auth.Middleware');
 
 // Route untuk mendapatkan daftar semua staf
