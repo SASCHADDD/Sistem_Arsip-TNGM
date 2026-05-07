@@ -34,7 +34,7 @@ const getEksternal = async (email) => {
             k.nama_kategori as jenis
          FROM laporan_eksternal e
          LEFT JOIN kategori k ON e.kategori_id = k.id
-         WHERE e.email_pengirim = ?
+         WHERE e.email_pengirim = ? AND e.jenis_pengirim = 'eksternal'
          ORDER BY e.created_at DESC`,
         [email]
     );
@@ -48,7 +48,7 @@ const getEksternal = async (email) => {
 
         return {
             id: row.id, judul: row.judul, jenis: row.jenis,
-            tipe: row.jenis_pengirim === 'mitra' ? 'Mitra' : 'Eksternal',
+            tipe: 'Eksternal',
             tanggal: row.tanggal,
             status: row.status === 'approved' ? 'Approved' : row.status === 'rejected' ? 'Rejected' : 'Pending',
             catatan: row.catatan || null, file_sertifikat: certFile, file_dokumen: row.file_dokumen,
@@ -56,4 +56,35 @@ const getEksternal = async (email) => {
     });
 };
 
-module.exports = { getInternal, getEksternal };
+const getMitra = async (email) => {
+    const [rows] = await db.execute(
+        `SELECT 
+            e.id, e.judul_laporan as judul, e.jenis_pengirim, e.instansi_pengirim,
+            e.created_at as tanggal, e.status, e.catatan,
+            e.file_dokumen, e.file_lampiran, e.file_output,
+            k.nama_kategori as jenis
+         FROM laporan_eksternal e
+         LEFT JOIN kategori k ON e.kategori_id = k.id
+         WHERE e.email_pengirim = ? AND e.jenis_pengirim = 'mitra'
+         ORDER BY e.created_at DESC`,
+        [email]
+    );
+
+    return rows.map(row => {
+        let certFile = null;
+        if (row.status === 'approved') {
+            if (row.file_output) certFile = row.file_output;
+            else if (row.file_lampiran && row.file_lampiran.startsWith('ESertifikat_')) certFile = row.file_lampiran;
+        }
+
+        return {
+            id: row.id, judul: row.judul, jenis: row.jenis,
+            tipe: 'Mitra',
+            tanggal: row.tanggal,
+            status: row.status === 'approved' ? 'Approved' : row.status === 'rejected' ? 'Rejected' : 'Pending',
+            catatan: row.catatan || null, file_sertifikat: certFile, file_dokumen: row.file_dokumen,
+        };
+    });
+};
+
+module.exports = { getInternal, getEksternal, getMitra };
