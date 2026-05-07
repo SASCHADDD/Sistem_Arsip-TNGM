@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom"
 import { useState } from "react"
 import Footer from "../components/Footer"
 import logo from "../assets/logo-tngm.png"
-import { Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff, ArrowLeft } from "lucide-react"
 import { login } from "../api/auth"
 const Login = () => {
     const navigate = useNavigate()
@@ -46,7 +46,15 @@ const Login = () => {
         <div className="min-h-screen flex flex-col">
 
             <main className="flex-1 flex items-center justify-center p-8">
-                <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-10 flex flex-col items-center w-full max-w-md border border-white/20 shadow-xl">
+                <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-10 flex flex-col items-center w-full max-w-md border border-white/20 shadow-xl relative">
+                    {/* Tombol Back */}
+                    <button 
+                        onClick={() => navigate('/')}
+                        className="absolute left-6 top-6 p-2 text-green-700 hover:text-green-900 hover:bg-green-50 rounded-xl transition-all flex items-center gap-2 text-sm font-semibold group"
+                    >
+                        <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+                    </button>
+
                     <img src={logo} alt="Logo" className="h-20 w-auto object-contain mb-6" />
 
                     <h2 className="text-3xl font-bold text-green-800 mb-2 font-graduate">LOGIN</h2>
