@@ -126,7 +126,7 @@ const DetailLaporanAdmin = () => {
                 ? import.meta.env.VITE_API_URL.replace('/api', '')
                 : 'http://localhost:3000';
 
-            const fileUrl = `${baseUrl}/uploads/${folder}/${filename}`;
+            const fileUrl = `${baseUrl}/uploads/${folder}/${encodeURIComponent(filename)}`;
             window.open(fileUrl, '_blank');
         } catch (error) {
             console.error('Preview error:', error);
@@ -309,7 +309,7 @@ const DetailLaporanAdmin = () => {
 
                                 {/* Hardfile Image */}
                                 <div
-                                    onClick={() => handleDownload(report.hardfile)}
+                                    onClick={() => handleDownload(report.hardfile, 'buktihardfile')}
                                     className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-green-400 hover:bg-green-50 transition-all group cursor-pointer"
                                 >
                                     <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -346,12 +346,12 @@ const DetailLaporanAdmin = () => {
                             <div>
                                 <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                                     <CheckCircle size={20} className="text-green-600" />
-                                    Dokumen Keluaran
+                                    Dokumen Output Resmi
                                 </h3>
 
                                 {report.outputFile ? (
                                     <div
-                                        onClick={() => handleDownload(report.outputFile, 'laporan/output')}
+                                        onClick={() => handleDownload(report.outputFile, 'output')}
                                         className="flex items-center justify-between p-4 border border-green-100 bg-green-50/50 rounded-lg hover:border-green-400 hover:bg-green-100 transition-all group cursor-pointer max-w-xl"
                                         title="Buka Dokumen Keluaran"
                                     >

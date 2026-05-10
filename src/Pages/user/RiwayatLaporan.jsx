@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SidebarUser from "../../components/SidebarUser";
-import { Search, FileText, MapPin, Calendar, Eye, Loader2, AlertCircle } from "lucide-react";
+import { Search, FileText, MapPin, Calendar, Eye, Loader2, AlertCircle, Download } from "lucide-react";
 import { getRiwayatLaporan } from "../../api/laporan";
 
 const RiwayatLaporan = () => {
@@ -216,13 +216,47 @@ const RiwayatLaporan = () => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                <button
-                                                    onClick={() => navigate(`/user/detail-laporan/${report.id}`)}
-                                                    className="p-2.5 text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-600 hover:text-white transition-all transform active:scale-95 shadow-sm"
-                                                    title="Lihat Detail"
-                                                >
-                                                    <Eye size={18} />
-                                                </button>
+                                                    <div className="flex justify-center items-center gap-2">
+                                                        <button
+                                                            onClick={() => navigate(`/user/detail-laporan/${report.id}`)}
+                                                            className="p-2.5 text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-600 hover:text-white transition-all transform active:scale-95 shadow-sm"
+                                                            title="Lihat Detail"
+                                                        >
+                                                            <Eye size={18} />
+                                                        </button>
+
+                                                        {report.file_laporan && (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    const baseUrl = import.meta.env.VITE_API_URL
+                                                                        ? import.meta.env.VITE_API_URL.replace('/api', '')
+                                                                        : 'http://localhost:3000';
+                                                                    window.open(`${baseUrl}/uploads/laporan/${encodeURIComponent(report.file_laporan)}`, '_blank');
+                                                                }}
+                                                                className="p-2.5 text-orange-600 bg-orange-50 rounded-xl hover:bg-orange-600 hover:text-white transition-all transform active:scale-95 shadow-sm"
+                                                                title="Download File Laporan"
+                                                            >
+                                                                <Download size={18} />
+                                                            </button>
+                                                        )}
+
+                                                        {report.status === 'Approved' && report.file_output && (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    const baseUrl = import.meta.env.VITE_API_URL
+                                                                        ? import.meta.env.VITE_API_URL.replace('/api', '')
+                                                                        : 'http://localhost:3000';
+                                                                    window.open(`${baseUrl}/uploads/output/${encodeURIComponent(report.file_output)}`, '_blank');
+                                                                }}
+                                                                className="p-2.5 text-green-600 bg-green-50 rounded-xl hover:bg-green-600 hover:text-white transition-all transform active:scale-95 shadow-sm"
+                                                                title="Download Tanda Terima"
+                                                            >
+                                                                <Download size={18} />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                             </td>
                                         </tr>
                                     ))

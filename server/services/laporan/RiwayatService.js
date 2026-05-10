@@ -3,7 +3,7 @@ const db = require('../../config/database');
 const getInternal = async (userId) => {
     const query = `
         SELECT 
-            l.id, l.judul, l.jenis_laporan, l.tanggal_berakhir, l.created_at, l.status, l.penilaian,
+            l.id, l.judul, l.jenis_laporan, l.tanggal_berakhir, l.created_at, l.status, l.penilaian, l.file_output, l.file_laporan,
             w.nama_wilayah, r.nama_resor
         FROM laporan_internal l
         LEFT JOIN wilayah w ON l.wilayah_id = w.id
@@ -20,6 +20,8 @@ const getInternal = async (userId) => {
         date: new Date(row.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }),
         status: row.status,
         penilaian: row.penilaian,
+        file_output: row.file_output,
+        file_laporan: row.file_laporan,
         wilayah: row.nama_resor || row.nama_wilayah,
         type: row.jenis_laporan === 'A' ? 'Laporan A' : 'Laporan B'
     }));

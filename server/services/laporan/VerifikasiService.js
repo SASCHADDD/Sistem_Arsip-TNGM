@@ -22,7 +22,12 @@ const verifyLaporanLogic = async (id, status, catatan, source_table, user) => {
                 jenis_laporan: laporan.jenis_laporan === 'A' ? 'Laporan A' : 'Laporan B',
                 penerima: user.nama
             };
-            fileOutput = await generateTandaTerimaPDF(pdfData);
+            try {
+                fileOutput = await generateTandaTerimaPDF(pdfData);
+            } catch (pdfError) {
+                console.error("PDF Generation failed, skipping file creation:", pdfError.message);
+                fileOutput = null; // Set ke null agar database tetap bisa diupdate
+            }
             await db.execute('UPDATE laporan_internal SET status = ?, file_output = ?, penilaian = ? WHERE id = ?', [status, fileOutput, penilaianValue, id]);
         } else {
             await db.execute('UPDATE laporan_internal SET status = ?, catatan = ? WHERE id = ?', [status, catatan || '', id]);
@@ -48,7 +53,12 @@ const verifyLaporanLogic = async (id, status, catatan, source_table, user) => {
                 nomor_sertifikat: nomorSertifikat,
                 tanggal_terbit: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
             };
-            fileOutput = await generateESertifikatPDF(sertifikatData);
+            try {
+                fileOutput = await generateESertifikatPDF(sertifikatData);
+            } catch (pdfError) {
+                console.error("E-Sertifikat Generation failed, skipping file creation:", pdfError.message);
+                fileOutput = null;
+            }
             await db.execute('UPDATE laporan_eksternal SET status = ?, catatan = ?, file_output = ? WHERE id = ?', [status, catatan || '', fileOutput, id]);
         } else {
             await db.execute('UPDATE laporan_eksternal SET status = ?, catatan = ? WHERE id = ?', [status, catatan || '', id]);

@@ -95,7 +95,7 @@ const DataLaporan = () => {
             const baseUrl = import.meta.env.VITE_API_URL
                 ? import.meta.env.VITE_API_URL.replace('/api', '')
                 : 'http://localhost:3000';
-            const fileUrl = `${baseUrl}/uploads/${folder}/${filename}`;
+            const fileUrl = `${baseUrl}/uploads/${folder}/${encodeURIComponent(filename)}`;
             window.open(fileUrl, '_blank');
         } catch (error) {
             console.error('Download error:', error);
@@ -375,26 +375,37 @@ const DataLaporan = () => {
                                                         <Eye size={18} />
                                                     </button>
 
-                                                    {item.source_table === 'internal' ? (
+                                                     {item.source_table === 'internal' ? (
                                                         item.file_output && (
                                                             <button
-                                                                onClick={() => handleDownload(item.file_output, 'laporan/output')}
+                                                                onClick={() => handleDownload(item.file_output, 'output')}
                                                                 className="p-2 text-green-600 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
-                                                                title="Download Output (Sertifikat)"
+                                                                title="Download Tanda Terima"
                                                             >
                                                                 <Download size={18} />
                                                             </button>
                                                         )
                                                     ) : (
-                                                        item.file_laporan && (
-                                                            <button
-                                                                onClick={() => handleDownload(item.file_laporan)}
-                                                                className="p-2 text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors"
-                                                                title="Download File Laporan"
-                                                            >
-                                                                <Download size={18} />
-                                                            </button>
-                                                        )
+                                                        <div className="flex gap-2">
+                                                            {item.file_laporan && (
+                                                                <button
+                                                                    onClick={() => handleDownload(item.file_laporan)}
+                                                                    className="p-2 text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors"
+                                                                    title="Download File Laporan"
+                                                                >
+                                                                    <Download size={18} />
+                                                                </button>
+                                                            )}
+                                                            {item.file_output && (
+                                                                <button
+                                                                    onClick={() => handleDownload(item.file_output, 'output')}
+                                                                    className="p-2 text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                                                                    title="Download E-Sertifikat"
+                                                                >
+                                                                    <Download size={18} />
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </div>
                                             </td>

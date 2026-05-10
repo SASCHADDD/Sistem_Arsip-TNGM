@@ -1,4 +1,13 @@
-const puppeteer = require('puppeteer'); // Mengimpor Puppeteer, sebuah library untuk mengontrol browser Chrome/Chromium secara otomatis (headless)
+let puppeteer;
+try {
+    puppeteer = require('puppeteer-core');
+} catch (e) {
+    try {
+        puppeteer = require('puppeteer');
+    } catch (e2) {
+        console.warn("Peringatan: Library 'puppeteer' atau 'puppeteer-core' tidak ditemukan. Fitur cetak PDF tidak akan berfungsi.");
+    }
+}
 const fs = require('fs'); // Mengimpor modul File System (fs) bawaan Node.js untuk membaca dan menulis file di penyimpanan server
 const path = require('path'); // Mengimpor modul path bawaan Node.js untuk mengatur dan memudahkan manipulasi direktori/jalur file
 
@@ -11,11 +20,14 @@ const path = require('path'); // Mengimpor modul path bawaan Node.js untuk menga
  * @returns {Promise<string>} - Mengembalikan janji (Promise) berupa nama string file PDF yang berhasil dibuat
  */
 const generateTandaTerimaPDF = async (data) => {
+    if (!puppeteer) {
+        throw new Error("Puppeteer tidak terinstal. Gagal membuat PDF Tanda Terima.");
+    }
     try {
         // 1. MEMPERSIAPKAN TEMPLATE HTML
         // Menentukan lokasi file template HTML Tanda Terima. 
         // __dirname adalah letak folder file ini (services), lalu kita "naik satu folder" (..) dan masuk ke folder 'suratpengantar'
-        const templatePath = path.join(__dirname, '../suratpengantar/tanda_terima.html');
+        const templatePath = path.join(__dirname, '../../suratpengantar/tanda_terima.html');
         
         // Membaca seluruh isi file HTML tersebut sebagai string teks mentah (raw string) menggunakan format encoding utf-8
         let htmlContent = fs.readFileSync(templatePath, 'utf8');
@@ -36,6 +48,9 @@ const generateTandaTerimaPDF = async (data) => {
         // Puppeteer akan membuka Chrome di latar belakang server (tanpa UI).
         const browser = await puppeteer.launch({
             headless: 'new', // Menggunakan mode headless terbaru (tanpa memunculkan jendela aplikasi secara visual)
+            executablePath: process.platform === 'darwin' 
+                ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' 
+                : undefined,
             args: ['--no-sandbox', '--disable-setuid-sandbox'] // Argumen keamanan agar pembukaan tab siluman ini diizinkan oleh sistem operasi Linux/server/VPS
         });
         
@@ -49,7 +64,7 @@ const generateTandaTerimaPDF = async (data) => {
 
         // 5. MENYIAPKAN DIREKTORI (FOLDER) PENYIMPANAN
         // Menyiapkan rute folder tempat penyimpanan file PDF-nya nanti. (Di dalam folder uploads/laporan/output)
-        const outputDir = path.join(__dirname, '../../uploads/laporan/output');
+        const outputDir = path.join(__dirname, '../../uploads/output');
         
         // Mengecek apakah folder outputDir itu sudah pernah dibuat di dalam harddisk server. 
         // Jika belom ada foldernya sama sekali, buat foldernya sekarang (recursive: true akan membuatkan foldernya beserta induk-induk foldernya jika belum ada)
@@ -111,6 +126,9 @@ const generateTandaTerimaPDF = async (data) => {
  * @returns {Promise<string>} - Nama file PDF yang dihasilkan
  */
 const generateESertifikatPDF = async (data) => {
+    if (!puppeteer) {
+        throw new Error("Puppeteer tidak terinstal. Gagal membuat PDF E-Sertifikat.");
+    }
     try {
         const templatePath = path.join(__dirname, '../suratpengantar/e_sertifikat.html');
         let htmlContent = fs.readFileSync(templatePath, 'utf8');
@@ -136,12 +154,15 @@ const generateESertifikatPDF = async (data) => {
 
         const browser = await puppeteer.launch({
             headless: 'new',
+            executablePath: process.platform === 'darwin' 
+                ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' 
+                : undefined,
             args: ['--no-sandbox', '--disable-setuid-sandbox']
         });
         const page = await browser.newPage();
         await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
 
-        const outputDir = path.join(__dirname, '../../uploads/laporan/output');
+        const outputDir = path.join(__dirname, '../../uploads/output');
         if (!fs.existsSync(outputDir)) {
             fs.mkdirSync(outputDir, { recursive: true });
         }
