@@ -142,6 +142,22 @@ const Mitra = () => {
     };
 
 
+    const handleReset = () => {
+        setFormData({
+            namaPic: mitraUser?.nama || '',
+            namaMitra: mitraUser?.instansi || '',
+            nomorPks: '',
+            email: mitraUser?.email || '',
+            judul: '',
+            jenis: '',
+            wilayah: '',
+            tanggalBerakhir: '',
+            file: null,
+            hardfile: null,
+            keterangan: ''
+        });
+    };
+
     return (
         <div className="min-h-screen flex flex-col">
 
