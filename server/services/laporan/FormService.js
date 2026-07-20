@@ -1,4 +1,4 @@
-const db = require('../../config/database');
+const { Wilayah, Resor } = require('../../models');
 
 const getOptions = async () => {
     const kategori = [
@@ -6,8 +6,17 @@ const getOptions = async () => {
         { id: 'B', nama_kategori: 'Laporan B' }
     ];
 
-    const [wilayahRows] = await db.query('SELECT id, nama_wilayah as nama FROM wilayah ORDER BY nama_wilayah ASC');
-    const [resorRows] = await db.query('SELECT id, nama_resor as nama, wilayah_id FROM resor ORDER BY nama_resor ASC');
+    const wilayahRows = await Wilayah.findAll({
+        attributes: ['id', ['nama_wilayah', 'nama']],
+        order: [['nama_wilayah', 'ASC']],
+        raw: true
+    });
+    
+    const resorRows = await Resor.findAll({
+        attributes: ['id', ['nama_resor', 'nama'], 'wilayah_id'],
+        order: [['nama_resor', 'ASC']],
+        raw: true
+    });
 
     return { kategori, wilayah: wilayahRows, resor: resorRows };
 };

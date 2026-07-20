@@ -1,4 +1,6 @@
 const DetailService = require('../../services/laporan/DetailService');
+const path = require('path');
+const fs = require('fs');
 
 const getdetaillaporan = async (req, res) => {
     try {

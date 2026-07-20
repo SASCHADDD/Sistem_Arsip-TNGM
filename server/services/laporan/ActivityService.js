@@ -1,56 +1,88 @@
-const db = require('../../config/database');
+const { ActivityLog, Pengguna, LaporanInternal } = require('../../models');
+const { Op } = require('sequelize');
 
 const getUserLogs = async (userId) => {
-    const query = `
-        SELECT 
-            a.id, a.action, a.description, a.created_at,
-            u.nama as actor_name, u.role as actor_role
-        FROM activity_log a
-        LEFT JOIN laporan_internal l ON a.laporan_id = l.id
-        JOIN pengguna u ON a.user_id = u.id
-        WHERE l.created_by = ? OR (a.laporan_id IS NULL AND a.user_id = ?)
-        ORDER BY a.created_at DESC
-        LIMIT 10
-    `;
+    const logs = await ActivityLog.findAll({
+        include: [
+            {
+                model: Pengguna,
+                as: 'user_rel',
+                attributes: ['nama', 'role']
+            },
+            {
+                model: LaporanInternal,
+                as: 'laporan_rel',
+                attributes: ['created_by']
+            }
+        ],
+        where: {
+            [Op.or]: [
+                { '$laporan_rel.created_by$': userId },
+                {
+                    laporan_id: null,
+                    user_id: userId
+                }
+            ]
+        },
+        order: [['created_at', 'DESC']],
+        limit: 10
+    });
 
-    const [rows] = await db.execute(query, [userId, userId]);
-
-    return rows.map(row => ({
-        id: row.id, action: row.action, description: row.description,
-        date: row.created_at, actor: row.actor_name, is_admin: row.actor_role.includes('admin')
+    return logs.map(log => ({
+        id: log.id,
+        action: log.action,
+        description: log.description,
+        date: log.created_at,
+        actor: log.user_rel ? log.user_rel.nama : '-',
+        is_admin: log.user_rel ? log.user_rel.role.includes('admin') : false
     }));
 };
 
 const getAdminLogs = async (user) => {
-    let whereClause = "";
-    let queryParams = [];
+    let whereClause = {};
 
     if (user.role === 'admin_wilayah' || user.role === 'kepala_wilayah') {
-        whereClause = "WHERE (l.wilayah_id = ? OR p.wilayah_id = ? OR a.user_id = ?)";
-        queryParams.push(user.wilayah_id, user.wilayah_id, user.id);
+        whereClause = {
+            [Op.or]: [
+                { '$laporan_rel.wilayah_id$': user.wilayah_id },
+                { '$user_rel.wilayah_id$': user.wilayah_id },
+                { user_id: user.id }
+            ]
+        };
     }
 
-    const query = `
-        SELECT 
-            a.id, a.action, a.description, a.created_at,
-            u.nama as actor_name, u.role as actor_role,
-            l.judul as report_title,
-            p.nama as pelapor_name
-        FROM activity_log a
-        JOIN pengguna u ON a.user_id = u.id
-        LEFT JOIN laporan_internal l ON a.laporan_id = l.id
-        LEFT JOIN pengguna p ON l.created_by = p.id
-        ${whereClause}
-        ORDER BY a.created_at DESC
-        LIMIT 50
-    `;
+    const logs = await ActivityLog.findAll({
+        include: [
+            {
+                model: Pengguna,
+                as: 'user_rel',
+                attributes: ['nama', 'role', 'wilayah_id']
+            },
+            {
+                model: LaporanInternal,
+                as: 'laporan_rel',
+                attributes: ['judul', 'wilayah_id', 'created_by'],
+                include: [{
+                    model: Pengguna,
+                    as: 'pembuat',
+                    attributes: ['nama']
+                }]
+            }
+        ],
+        where: whereClause,
+        order: [['created_at', 'DESC']],
+        limit: 50
+    });
 
-    const [rows] = await db.execute(query, queryParams.length > 0 ? queryParams : undefined);
-
-    return rows.map(row => ({
-        id: row.id, action: row.action, description: row.description,
-        date: row.created_at, actor: row.actor_name, role: row.actor_role,
-        report_title: row.report_title || '-', pelapor: row.pelapor_name || '-'
+    return logs.map(log => ({
+        id: log.id,
+        action: log.action,
+        description: log.description,
+        date: log.created_at,
+        actor: log.user_rel ? log.user_rel.nama : '-',
+        role: log.user_rel ? log.user_rel.role : '-',
+        report_title: log.laporan_rel ? log.laporan_rel.judul : '-',
+        pelapor: log.laporan_rel && log.laporan_rel.pembuat ? log.laporan_rel.pembuat.nama : '-'
     }));
 };
 

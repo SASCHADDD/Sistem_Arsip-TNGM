@@ -64,7 +64,7 @@ const generateTandaTerimaPDF = async (data) => {
 
         // 5. MENYIAPKAN DIREKTORI (FOLDER) PENYIMPANAN
         // Menyiapkan rute folder tempat penyimpanan file PDF-nya nanti. (Di dalam folder uploads/laporan/output)
-        const outputDir = path.join(__dirname, '../../uploads/output');
+        const outputDir = path.join(__dirname, '../../../uploads/output');
         
         // Mengecek apakah folder outputDir itu sudah pernah dibuat di dalam harddisk server. 
         // Jika belom ada foldernya sama sekali, buat foldernya sekarang (recursive: true akan membuatkan foldernya beserta induk-induk foldernya jika belum ada)
@@ -162,7 +162,7 @@ const generateESertifikatPDF = async (data) => {
         const page = await browser.newPage();
         await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
 
-        const outputDir = path.join(__dirname, '../../uploads/output');
+        const outputDir = path.join(__dirname, '../../../uploads/output');
         if (!fs.existsSync(outputDir)) {
             fs.mkdirSync(outputDir, { recursive: true });
         }

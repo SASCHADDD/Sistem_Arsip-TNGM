@@ -19,6 +19,7 @@ import ManajemenStaff from "./Pages/admin/ManajemenStaff.jsx";
 import DetailStaffAdmin from "./Pages/admin/DetailStaffAdmin.jsx";
 import InputArsipLama from "./Pages/admin/InputArsipLama.jsx";
 import DetailAktivitas from "./Pages/DetailAktivitas.jsx";
+import PreviewDokumen from "./Pages/PreviewDokumen.jsx";
 
 
 const PrivateRoute = () => {
@@ -44,6 +45,7 @@ function App() {
 
           {/* private route*/}
           <Route element={<PrivateRoute />}>
+            <Route path="/preview-dokumen" element={<PreviewDokumen />} />
             <Route path="/admin/dashboard" element={<DashboardAdmin />} />
             <Route path='/user/dashboard' element={<DashboardUser />} />
             <Route path="/user/riwayat-laporan" element={<RiwayatLaporan />} />

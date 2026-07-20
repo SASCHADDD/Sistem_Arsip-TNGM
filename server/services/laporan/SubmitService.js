@@ -1,4 +1,5 @@
-const db = require('../../config/database');
+const { Op } = require('sequelize');
+const { LaporanInternal, LaporanEksternal, Kategori, Resor, Wilayah, ActivityLog } = require('../../models');
 const { logActivity } = require('../activity/activityLogger');
 
 const processLaporanInternal = async (data, files, user) => {
@@ -19,18 +20,59 @@ const processLaporanInternal = async (data, files, user) => {
     const fileDokumen = files['file_dokumen'][0].filename;
     const fileLampiran = files['file_lampiran'][0].filename;
 
-    const query = `
-        INSERT INTO laporan_internal 
-        (judul, jenis_laporan, tanggal_berakhir, file_laporan, foto_hardfile, 
-        keterangan, wilayah_id, resor_id, created_by, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-    `;
+    const laporan = await LaporanInternal.create({
+        judul: judul_laporan,
+        jenis_laporan: kategori_id,
+        tanggal_berakhir: tanggal_berakhir,
+        file_laporan: fileDokumen,
+        foto_hardfile: fileLampiran,
+        keterangan: keterangan || null,
+        wilayah_id: user.wilayah_id,
+        resor_id: user.resor_id,
+        created_by: user.id,
+        created_at: new Date()
+    });
 
-    const values = [judul_laporan, kategori_id, tanggal_berakhir, fileDokumen, fileLampiran, keterangan || null, user.wilayah_id, user.resor_id, user.id];
-    const [result] = await db.execute(query, values);
+    await logActivity(user.id, laporan.id, 'SUBMIT', `Anda mengirimkan laporan baru: "${judul_laporan}"`);
+    return { message: 'Laporan internal berhasil disubmit', id: laporan.id };
+};
 
-    await logActivity(user.id, result.insertId, 'SUBMIT', `Anda mengirimkan laporan baru: "${judul_laporan}"`);
-    return { message: 'Laporan internal berhasil disubmit', id: result.insertId };
+const getResorWilayah = async (wilayahName) => {
+    let wilayahId = 1; let resorId = null;
+    if (wilayahName && wilayahName !== 'Balai TNGM' && wilayahName !== 'Kantor Balai' && wilayahName !== 'Lintas Wilayah') {
+        const resor = await Resor.findOne({
+            where: {
+                [Op.or]: [
+                    { nama_resor: { [Op.like]: `%${wilayahName}%` } },
+                    { id: wilayahName }
+                ]
+            }
+        });
+        if (resor) {
+            resorId = resor.id;
+            wilayahId = resor.wilayah_id;
+        } else {
+            const wil = await Wilayah.findOne({
+                where: { nama_wilayah: { [Op.like]: `%${wilayahName}%` } }
+            });
+            if (wil) wilayahId = wil.id;
+        }
+    }
+    return { wilayahId, resorId };
+};
+
+const getKategoriId = async (jenisName) => {
+    let kategoriId = 1;
+    const kat = await Kategori.findOne({
+        where: {
+            [Op.or]: [
+                { nama_kategori: jenisName },
+                { id: jenisName }
+            ]
+        }
+    });
+    if (kat) kategoriId = kat.id;
+    return kategoriId;
 };
 
 const processLaporanEksternal = async (data, files) => {
@@ -42,24 +84,34 @@ const processLaporanEksternal = async (data, files) => {
         throw new Error('Harap isi data wajib dan lampirkan dokumen.');
     }
 
-    let kategoriId = null;
-    const [kategoriRows] = await db.execute('SELECT id FROM kategori WHERE nama_kategori = ? OR id = ? LIMIT 1', [jenis, jenis]);
-    if (kategoriRows.length > 0) kategoriId = kategoriRows[0].id;
-    if (!kategoriId) kategoriId = 1;
+    const kategoriId = await getKategoriId(jenis);
+    const { wilayahId, resorId } = await getResorWilayah(wilayah);
 
-    let wilayahId = 1; let resorId = null;
-    if (wilayah && wilayah !== 'Balai TNGM' && wilayah !== 'Kantor Balai') {
-        const [resorRows] = await db.execute('SELECT id, wilayah_id FROM resor WHERE nama_resor LIKE ? OR id = ? LIMIT 1', [`%${wilayah}%`, wilayah]);
-        if (resorRows.length > 0) { resorId = resorRows[0].id; wilayahId = resorRows[0].wilayah_id; }
-    }
+    const laporan = await LaporanEksternal.create({
+        jenis_pengirim: 'pengaju simaksi',
+        nama_pengirim: nama,
+        instansi_pengirim: instansi,
+        email_pengirim: email,
+        judul_laporan: judul,
+        kategori_id: kategoriId,
+        wilayah_id: wilayahId,
+        resor_id: resorId,
+        tanggal_berakhir: tanggalBerakhir || null,
+        keterangan: keterangan || null,
+        file_dokumen: fileDokumen,
+        file_lampiran: fileLampiran,
+        status: 'pending',
+        created_at: new Date()
+    });
 
-    const query = `INSERT INTO laporan_eksternal (jenis_pengirim, nama_pengirim, instansi_pengirim, email_pengirim, judul_laporan, kategori_id, wilayah_id, resor_id, tanggal_berakhir, keterangan, file_dokumen, file_lampiran, status, created_at) VALUES ('pengaju simaksi', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())`;
-    const queryParams = [nama, instansi, email, judul, kategoriId, wilayahId, resorId, tanggalBerakhir || null, keterangan || null, fileDokumen, fileLampiran];
-    const [result] = await db.execute(query, queryParams);
-
-    await db.execute(`INSERT INTO activity_log (user_id, laporan_id, action, description, created_at) VALUES (1, NULL, 'SUBMIT', ?, NOW())`, [`Sistem: Laporan eksternal baru berjudul "${judul}" diajukan oleh ${nama} (${instansi}).`]);
+    await ActivityLog.create({
+        user_id: 1, // System user ID
+        laporan_id: null,
+        action: 'SUBMIT',
+        description: `Sistem: Laporan eksternal baru berjudul "${judul}" diajukan oleh ${nama} (${instansi}).`
+    });
     
-    return { message: 'Laporan eksternal berhasil diajukan', id: result.insertId };
+    return { message: 'Laporan eksternal berhasil diajukan', id: laporan.id };
 };
 
 const processLaporanMitra = async (data, files) => {
@@ -71,28 +123,35 @@ const processLaporanMitra = async (data, files) => {
         throw new Error('Harap isi data wajib dan lampirkan dokumen.');
     }
 
-    let kategoriId = null;
-    const [kategoriRows] = await db.execute('SELECT id FROM kategori WHERE nama_kategori = ? OR id = ? LIMIT 1', [jenis, jenis]);
-    if (kategoriRows.length > 0) kategoriId = kategoriRows[0].id;
-    if (!kategoriId) kategoriId = 1;
+    const kategoriId = await getKategoriId(jenis);
+    const { wilayahId, resorId } = await getResorWilayah(wilayah);
 
-    let wilayahId = 1; let resorId = null;
-    if (wilayah && wilayah !== 'Balai TNGM' && wilayah !== 'Lintas Wilayah' && wilayah !== 'Kantor Balai') {
-        const [resorRows] = await db.execute('SELECT id, wilayah_id FROM resor WHERE nama_resor LIKE ? OR id = ? LIMIT 1', [`%${wilayah}%`, wilayah]);
-        if (resorRows.length > 0) { resorId = resorRows[0].id; wilayahId = resorRows[0].wilayah_id; }
-        else {
-            const [wilRows] = await db.execute('SELECT id FROM wilayah WHERE nama_wilayah LIKE ? LIMIT 1', [`%${wilayah}%`]);
-            if (wilRows.length > 0) { wilayahId = wilRows[0].id; }
-        }
-    }
+    const laporan = await LaporanEksternal.create({
+        jenis_pengirim: 'mitra',
+        nama_pengirim: namaPic,
+        instansi_pengirim: namaMitra,
+        nomor_pks: nomorPks || null,
+        email_pengirim: email,
+        judul_laporan: judul,
+        kategori_id: kategoriId,
+        wilayah_id: wilayahId,
+        resor_id: resorId,
+        tanggal_berakhir: tanggalBerakhir || null,
+        keterangan: keterangan || null,
+        file_dokumen: fileDokumen,
+        file_lampiran: fileLampiran,
+        status: 'pending',
+        created_at: new Date()
+    });
 
-    const query = `INSERT INTO laporan_eksternal (jenis_pengirim, nama_pengirim, instansi_pengirim, nomor_pks, email_pengirim, judul_laporan, kategori_id, wilayah_id, resor_id, tanggal_berakhir, keterangan, file_dokumen, file_lampiran, status, created_at) VALUES ('mitra', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())`;
-    const queryParams = [namaPic, namaMitra, nomorPks || null, email, judul, kategoriId, wilayahId, resorId, tanggalBerakhir || null, keterangan || null, fileDokumen, fileLampiran];
-    const [result] = await db.execute(query, queryParams);
-
-    await db.execute(`INSERT INTO activity_log (user_id, laporan_id, action, description, created_at) VALUES (1, NULL, 'SUBMIT', ?, NOW())`, [`Sistem: Laporan mitra baru berjudul "${judul}" diajukan oleh ${namaPic} (${namaMitra}).`]);
+    await ActivityLog.create({
+        user_id: 1,
+        laporan_id: null,
+        action: 'SUBMIT',
+        description: `Sistem: Laporan mitra baru berjudul "${judul}" diajukan oleh ${namaPic} (${namaMitra}).`
+    });
     
-    return { message: 'Laporan mitra berhasil diajukan', id: result.insertId };
+    return { message: 'Laporan mitra berhasil diajukan', id: laporan.id };
 };
 
 module.exports = { processLaporanInternal, processLaporanEksternal, processLaporanMitra };

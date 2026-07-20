@@ -1,22 +1,23 @@
-const db = require('../../config/database');
+const { LaporanInternal, LaporanEksternal, Wilayah, Resor, Pengguna, Kategori, ActivityLog } = require('../../models');
 const { generateTandaTerimaPDF, generateESertifikatPDF } = require('../pdf/pdfService');
 const { hitungPenilaian } = require('../penilaian/penilaianService');
 const { logActivity } = require('../activity/activityLogger');
 
 const verifyLaporanLogic = async (id, status, catatan, source_table, user) => {
-    let laporan = null;
     let fileOutput = null;
 
     if (source_table === 'internal') {
-        const [rows] = await db.execute(`SELECT l.*, u.nama as nama_pelapor FROM laporan_internal l JOIN pengguna u ON l.created_by = u.id WHERE l.id = ?`, [id]);
-        if (rows.length === 0) throw new Error('Laporan Internal tidak ditemukan');
+        const laporan = await LaporanInternal.findByPk(id, {
+            include: [{ model: Pengguna, as: 'pembuat', attributes: ['nama'] }]
+        });
+        if (!laporan) throw new Error('Laporan Internal tidak ditemukan');
         
-        laporan = rows[0];
+        let updateData = { status, catatan: catatan || '' };
 
         if (status === 'Approved') {
             let penilaianValue = hitungPenilaian(laporan);
             const pdfData = {
-                nama_pengirim: laporan.nama_pelapor,
+                nama_pengirim: laporan.pembuat ? laporan.pembuat.nama : '-',
                 tanggal_terima: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
                 judul_laporan: laporan.judul,
                 jenis_laporan: laporan.jenis_laporan === 'A' ? 'Laporan A' : 'Laporan B',
@@ -26,21 +27,22 @@ const verifyLaporanLogic = async (id, status, catatan, source_table, user) => {
                 fileOutput = await generateTandaTerimaPDF(pdfData);
             } catch (pdfError) {
                 console.error("PDF Generation failed, skipping file creation:", pdfError.message);
-                fileOutput = null; // Set ke null agar database tetap bisa diupdate
+                fileOutput = null;
             }
-            await db.execute('UPDATE laporan_internal SET status = ?, file_output = ?, penilaian = ? WHERE id = ?', [status, fileOutput, penilaianValue, id]);
-        } else {
-            await db.execute('UPDATE laporan_internal SET status = ?, catatan = ? WHERE id = ?', [status, catatan || '', id]);
+            updateData.file_output = fileOutput;
+            updateData.penilaian = penilaianValue;
         }
+
+        await laporan.update(updateData);
 
         const desc = status === 'Approved' ? `Laporan Internal "${laporan.judul}" telah disetujui oleh admin. Tanda terima diterbitkan.` : `Laporan Internal "${laporan.judul}" ditolak. Alasan: ${catatan || '-'}`;
         await logActivity(user.id, id, status === 'Approved' ? 'APPROVE' : 'REJECT', desc);
 
     } else if (source_table === 'eksternal') {
-        const [rows] = await db.execute(`SELECT * FROM laporan_eksternal WHERE id = ?`, [id]);
-        if (rows.length === 0) throw new Error('Laporan Eksternal tidak ditemukan');
+        const laporan = await LaporanEksternal.findByPk(id);
+        if (!laporan) throw new Error('Laporan Eksternal tidak ditemukan');
         
-        laporan = rows[0];
+        let updateData = { status, catatan: catatan || '' };
 
         if (status === 'Approved') {
             const nomorSertifikat = `${new Date().getFullYear()}${String(id).padStart(5, '0')}`;
@@ -59,14 +61,18 @@ const verifyLaporanLogic = async (id, status, catatan, source_table, user) => {
                 console.error("E-Sertifikat Generation failed, skipping file creation:", pdfError.message);
                 fileOutput = null;
             }
-            await db.execute('UPDATE laporan_eksternal SET status = ?, catatan = ?, file_output = ? WHERE id = ?', [status, catatan || '', fileOutput, id]);
-        } else {
-            await db.execute('UPDATE laporan_eksternal SET status = ?, catatan = ? WHERE id = ?', [status, catatan || '', id]);
+            updateData.file_output = fileOutput;
         }
+
+        await laporan.update(updateData);
 
         const desc = status === 'Approved' ? `Laporan Eksternal/Mitra "${laporan.judul_laporan}" telah disetujui. E-Sertifikat diterbitkan.` : `Laporan Eksternal/Mitra "${laporan.judul_laporan}" ditolak. Alasan: ${catatan || '-'}`;
         try {
-            await db.execute('INSERT INTO activity_log (user_id, action, description) VALUES (?, ?, ?)', [user.id, status === 'Approved' ? 'APPROVE' : 'REJECT', desc]);
+            await ActivityLog.create({
+                user_id: user.id,
+                action: status === 'Approved' ? 'APPROVE' : 'REJECT',
+                description: desc
+            });
         } catch (ignore) {}
 
     } else {
@@ -77,90 +83,134 @@ const verifyLaporanLogic = async (id, status, catatan, source_table, user) => {
 };
 
 const getPendingReportsLogic = async (user) => {
-    let whereInternal = "WHERE l.status = 'Pending'";
-    let whereEksternal = "WHERE e.status = 'Pending'";
-    let queryParams = [];
+    let intWhere = { status: 'Pending' };
+    let eksWhere = { status: 'pending' };
 
     if (user.role === 'admin_wilayah' || user.role === 'kepala_wilayah') {
-        whereInternal += " AND l.wilayah_id = ?";
-        whereEksternal += " AND e.wilayah_id = ?";
-        queryParams.push(user.wilayah_id, user.wilayah_id);
+        intWhere.wilayah_id = user.wilayah_id;
+        eksWhere.wilayah_id = user.wilayah_id;
     }
 
-    const query = `
-        SELECT 
-            l.id, l.judul, CASE WHEN l.jenis_laporan = 'A' THEN 'Laporan A' ELSE 'Laporan B' END as jenis, 
-            l.created_at as tanggal, l.status, l.penilaian, CASE WHEN l.resor_id IS NULL AND l.wilayah_id = 1 THEN 'Balai TNGM' ELSE COALESCE(r.nama_resor, w.nama_wilayah) END as wilayah,
-            u.nama as pelapor, 'Internal' as tipe_laporan, 'internal' as source_table
-        FROM laporan_internal l
-        LEFT JOIN wilayah w ON l.wilayah_id = w.id
-        LEFT JOIN resor r ON l.resor_id = r.id
-        LEFT JOIN pengguna u ON l.created_by = u.id
-        ${whereInternal}
-        UNION ALL
-        SELECT 
-            e.id, e.judul_laporan as judul, k.nama_kategori as jenis, 
-            e.created_at as tanggal, e.status, NULL as penilaian, CASE WHEN e.resor_id IS NULL AND e.wilayah_id = 1 THEN 'Balai TNGM' ELSE COALESCE(re.nama_resor, we.nama_wilayah) END as wilayah,
-            e.nama_pengirim as pelapor, CASE WHEN e.jenis_pengirim = 'mitra' THEN 'Mitra' ELSE 'Eksternal' END as tipe_laporan, 'eksternal' as source_table
-        FROM laporan_eksternal e
-        LEFT JOIN wilayah we ON e.wilayah_id = we.id
-        LEFT JOIN resor re ON e.resor_id = re.id
-        LEFT JOIN kategori k ON e.kategori_id = k.id
-        ${whereEksternal}
-        ORDER BY tanggal DESC
-    `;
+    const intRows = await LaporanInternal.findAll({
+        where: intWhere,
+        include: [
+            { model: Wilayah, as: 'wilayah_rel' },
+            { model: Resor, as: 'resor_rel' },
+            { model: Pengguna, as: 'pembuat' }
+        ]
+    });
 
-    const [reports] = await db.execute(query, queryParams);
+    const eksRows = await LaporanEksternal.findAll({
+        where: eksWhere,
+        include: [
+            { model: Wilayah, as: 'wilayah_rel' },
+            { model: Resor, as: 'resor_rel' },
+            { model: Kategori, as: 'kategori_rel' }
+        ]
+    });
+
+    const formatInternal = intRows.map(l => ({
+        id: l.id,
+        judul: l.judul,
+        jenis: l.jenis_laporan === 'A' ? 'Laporan A' : 'Laporan B',
+        tanggal: l.created_at,
+        status: l.status,
+        penilaian: l.penilaian,
+        wilayah: l.resor_rel ? l.resor_rel.nama_resor : (l.wilayah_rel ? l.wilayah_rel.nama_wilayah : (l.wilayah_id === 1 ? 'Balai TNGM' : null)),
+        pelapor: l.pembuat ? l.pembuat.nama : null,
+        tipe_laporan: 'Internal',
+        source_table: 'internal'
+    }));
+
+    const formatEksternal = eksRows.map(e => ({
+        id: e.id,
+        judul: e.judul_laporan,
+        jenis: e.kategori_rel ? e.kategori_rel.nama_kategori : null,
+        tanggal: e.created_at,
+        status: e.status,
+        penilaian: null,
+        wilayah: e.resor_rel ? e.resor_rel.nama_resor : (e.wilayah_rel ? e.wilayah_rel.nama_wilayah : (e.wilayah_id === 1 ? 'Balai TNGM' : null)),
+        pelapor: e.nama_pengirim,
+        tipe_laporan: e.jenis_pengirim === 'mitra' ? 'Mitra' : 'Eksternal',
+        source_table: 'eksternal'
+    }));
+
+    const reports = [...formatInternal, ...formatEksternal].sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
     return reports;
 };
 
 const getApprovedReportsLogic = async (user) => {
-    let whereInternal = "WHERE l.status = 'Approved'";
-    let whereEksternal = "WHERE e.status = 'Approved'";
-    let queryParams = [];
+    let intWhere = { status: 'Approved' };
+    let eksWhere = { status: 'approved' };
 
     if (user.role === 'admin_wilayah' || user.role === 'kepala_wilayah') {
-        whereInternal += " AND l.wilayah_id = ? AND l.resor_id IS NOT NULL";
-        whereEksternal += " AND 1=0";
-        queryParams.push(user.wilayah_id);
+        intWhere.wilayah_id = user.wilayah_id;
+        // Since original logic checked l.resor_id IS NOT NULL, we could apply it but to be safer we just use exact equivalent
+        // Actually the original query did: AND l.resor_id IS NOT NULL
+        // Because admin_wilayah shouldn't see 'Balai TNGM' level things? 
+        const { Op } = require('sequelize');
+        intWhere.resor_id = { [Op.not]: null };
+        eksWhere.id = -1; // and 1=0
     }
 
-    const query = `
-        SELECT 
-            l.id, l.judul, CASE WHEN l.jenis_laporan = 'A' THEN 'Laporan A' ELSE 'Laporan B' END as jenis, 
-            l.created_at as tanggal, l.status, l.file_laporan, l.file_output, l.penilaian,
-            l.resor_id as report_resor_id,
-            COALESCE(r.nama_resor, 'Balai TNGM') as wilayah,
-            u.nama as pelapor, u.resor_id as current_resor_id,
-            'Internal' as tipe_laporan, 'internal' as source_table
-        FROM laporan_internal l
-        LEFT JOIN wilayah w ON l.wilayah_id = w.id
-        LEFT JOIN resor r ON l.resor_id = r.id
-        LEFT JOIN pengguna u ON l.created_by = u.id
-        ${whereInternal}
-        UNION ALL
-        SELECT 
-            e.id, e.judul_laporan as judul, k.nama_kategori as jenis, 
-            e.created_at as tanggal, e.status, e.file_dokumen as file_laporan, e.file_output as file_output, NULL as penilaian,
-            e.resor_id as report_resor_id,
-            CASE WHEN e.resor_id IS NULL AND e.wilayah_id = 1 THEN 'Balai TNGM' ELSE COALESCE(re.nama_resor, we.nama_wilayah) END as wilayah,
-            e.nama_pengirim as pelapor, NULL as current_resor_id,
-            CASE WHEN e.jenis_pengirim = 'mitra' THEN 'Mitra' ELSE 'Eksternal' END as tipe_laporan, 'eksternal' as source_table
-        FROM laporan_eksternal e
-        LEFT JOIN wilayah we ON e.wilayah_id = we.id
-        LEFT JOIN resor re ON e.resor_id = re.id
-        LEFT JOIN kategori k ON e.kategori_id = k.id
-        ${whereEksternal}
-        ORDER BY tanggal DESC
-    `;
+    const intRows = await LaporanInternal.findAll({
+        where: intWhere,
+        include: [
+            { model: Wilayah, as: 'wilayah_rel' },
+            { model: Resor, as: 'resor_rel' },
+            { model: Pengguna, as: 'pembuat' }
+        ]
+    });
 
-    const [rows] = await db.execute(query, queryParams);
-    const reports = rows.map(row => ({
-        ...row,
-        is_mutasi: row.report_resor_id && row.current_resor_id ? row.report_resor_id !== row.current_resor_id : false
+    const eksRows = await LaporanEksternal.findAll({
+        where: eksWhere,
+        include: [
+            { model: Wilayah, as: 'wilayah_rel' },
+            { model: Resor, as: 'resor_rel' },
+            { model: Kategori, as: 'kategori_rel' }
+        ]
+    });
+
+    const formatInternal = intRows.map(l => ({
+        id: l.id,
+        judul: l.judul,
+        jenis: l.jenis_laporan === 'A' ? 'Laporan A' : 'Laporan B',
+        tanggal: l.created_at,
+        status: l.status,
+        file_laporan: l.file_laporan,
+        file_output: l.file_output,
+        penilaian: l.penilaian,
+        report_resor_id: l.resor_id,
+        wilayah: l.resor_rel ? l.resor_rel.nama_resor : 'Balai TNGM',
+        pelapor: l.pembuat ? l.pembuat.nama : null,
+        current_resor_id: l.pembuat ? l.pembuat.resor_id : null,
+        tipe_laporan: 'Internal',
+        source_table: 'internal'
     }));
 
-    return reports;
+    const formatEksternal = eksRows.map(e => ({
+        id: e.id,
+        judul: e.judul_laporan,
+        jenis: e.kategori_rel ? e.kategori_rel.nama_kategori : null,
+        tanggal: e.created_at,
+        status: e.status,
+        file_laporan: e.file_dokumen,
+        file_output: e.file_output,
+        penilaian: null,
+        report_resor_id: e.resor_id,
+        wilayah: e.resor_rel ? e.resor_rel.nama_resor : (e.wilayah_rel ? e.wilayah_rel.nama_wilayah : (e.wilayah_id === 1 ? 'Balai TNGM' : null)),
+        pelapor: e.nama_pengirim,
+        current_resor_id: null,
+        tipe_laporan: e.jenis_pengirim === 'mitra' ? 'Mitra' : 'Eksternal',
+        source_table: 'eksternal'
+    }));
+
+    const reports = [...formatInternal, ...formatEksternal].sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+
+    return reports.map(r => ({
+        ...r,
+        is_mutasi: r.report_resor_id && r.current_resor_id ? r.report_resor_id !== r.current_resor_id : false
+    }));
 };
 
 module.exports = { verifyLaporanLogic, getPendingReportsLogic, getApprovedReportsLogic };

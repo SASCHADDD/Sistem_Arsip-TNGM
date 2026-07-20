@@ -100,12 +100,12 @@ const DetailLaporan = () => {
         if (!filename) return;
 
         try {
-            const baseUrl = import.meta.env.VITE_API_URL
-                ? import.meta.env.VITE_API_URL.replace('/api', '')
+            const baseUrl = import.meta.env.VITE_API_URL 
+                ? import.meta.env.VITE_API_URL.replace(/\/api$/, '') 
                 : 'http://localhost:3000';
-
+            
             const fileUrl = `${baseUrl}/uploads/${folder}/${encodeURIComponent(filename)}`;
-            window.open(fileUrl, '_blank');
+            navigate(`/preview-dokumen?url=${encodeURIComponent(fileUrl)}&name=${encodeURIComponent(filename)}`);
         } catch (error) {
             console.error('Preview error:', error);
             alert('Gagal membuka file. Silakan coba lagi.');
