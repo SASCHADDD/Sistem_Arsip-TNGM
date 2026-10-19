@@ -2,10 +2,9 @@ import axios from 'axios';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-/**
- * Login untuk pengguna Eksternal & Mitra
- * Menggunakan akun dummy sementara (belum integrasi sistem luar)
- */
+
+//  Login untuk pengguna Eksternal & Mitra Menggunakan akun dummy sementara (belum integrasi sistem luar)
+
 export const loginEksternal = async (email, password) => {
     try {
         const response = await axios.post(`${BASE_URL}/eksternal/login`, { email, password });
@@ -15,9 +14,9 @@ export const loginEksternal = async (email, password) => {
     }
 };
 
-/**
- * Ambil riwayat laporan pengguna eksternal
- */
+
+//  Ambil riwayat laporan pengguna eksternal
+
 export const getRiwayatEksternal = async (token) => {
     try {
         const response = await axios.get(`${BASE_URL}/eksternal/riwayat-eksternal`, {

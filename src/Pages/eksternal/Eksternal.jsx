@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import Footer from "../../components/Footer";
 import { UploadCloud, Camera, Image, FileText, User, Building, Mail, MapPin, List, Calendar, Send, RotateCcw, Type, LogOut, CheckCircle, XCircle, FileCheck } from "lucide-react";
 import { submitEksternalReport, getDetailLaporan, updateLaporanEksternal, getFormOptions } from "../../api/laporan";
+import { logout } from "../../api/auth";
 import Swal from "sweetalert2";
 
 
@@ -260,9 +261,8 @@ const Eksternal = () => {
                                 Riwayat Laporan
                             </Link>
                             <button
-                                onClick={() => {
-                                    localStorage.removeItem('eksternal_token');
-                                    localStorage.removeItem('eksternal_user');
+                                onClick={async () => {
+                                    await logout();
                                     navigate('/eksternal/login');
                                 }}
                                 className="flex items-center gap-1.5 px-4 py-2 border border-red-200 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition-colors"

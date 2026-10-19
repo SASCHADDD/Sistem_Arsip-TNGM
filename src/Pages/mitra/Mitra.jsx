@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import Footer from "../../components/Footer";
 import { UploadCloud, Camera, Image, FileText, Handshake, User, Building, Mail, FileCheck, List, MapPin, Send, RotateCcw, Type, LogOut, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { submitMitraReport, getDetailLaporan, updateLaporanEksternal } from "../../api/laporan";
+import { logout } from "../../api/auth";
 import Swal from 'sweetalert2';
 
 
@@ -247,9 +248,8 @@ const Mitra = () => {
                                 Riwayat Laporan
                             </Link>
                             <button
-                                onClick={() => {
-                                    localStorage.removeItem('eksternal_token');
-                                    localStorage.removeItem('eksternal_user');
+                                onClick={async () => {
+                                    await logout();
                                     navigate('/mitra/login');
                                 }}
                                 className="flex items-center gap-1.5 px-4 py-2 border border-red-200 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition-colors"

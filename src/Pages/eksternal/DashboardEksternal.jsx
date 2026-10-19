@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import Footer from '../../components/Footer';
 import { getRiwayatEksternal, getRiwayatMitra } from '../../api/eksternal';
 import { downloadProtectedFile } from '../../api/files';
+import { logout } from '../../api/auth';
 import {
     LogOut, FileText, Clock, CheckCircle, XCircle,
     Download, Award, Send, RefreshCw, User, Building, Edit3
@@ -48,10 +49,9 @@ const DashboardEksternal = () => {
             confirmButtonColor: '#1B5E20',
             confirmButtonText: 'Ya, Keluar',
             cancelButtonText: 'Batal'
-        }).then(result => {
+        }).then(async result => {
             if (result.isConfirmed) {
-                localStorage.removeItem('eksternal_token');
-                localStorage.removeItem('eksternal_user');
+                await logout();
                 navigate('/');
             }
         });
