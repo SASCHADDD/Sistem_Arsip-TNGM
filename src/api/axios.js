@@ -11,8 +11,21 @@ const api = axios.create({
 // Request interceptor to add token
 api.interceptors.request.use(
     (config) => {
-        // Cek token internal dulu, jika tidak ada cek eksternal/mitra
-        const token = localStorage.getItem('token') || localStorage.getItem('eksternal_token');
+        const isEksternalRequest = config.url?.includes('/eksternal') || 
+                                   config.url?.includes('/submit-eksternal') || 
+                                   config.url?.includes('/submit-mitra') || 
+                                   config.url?.includes('/riwayat-eksternal') || 
+                                   config.url?.includes('/riwayat-mitra');
+        const isEksternalPage = typeof window !== 'undefined' && 
+                               (window.location.pathname.startsWith('/eksternal') || window.location.pathname.startsWith('/mitra'));
+
+        let token;
+        if (isEksternalRequest || isEksternalPage) {
+            token = localStorage.getItem('eksternal_token') || localStorage.getItem('token');
+        } else {
+            token = localStorage.getItem('token') || localStorage.getItem('eksternal_token');
+        }
+
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -26,17 +39,21 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        // Jangan redirect ke / jika error berasal dari endpoint login
         const config = error.config || {};
-        const isLoginRequest = config.url?.includes('/auth/login') || config.url?.includes('/auth/login-eksternal');
+        const isLoginRequest = config.url?.includes('/auth/login') || config.url?.includes('/eksternal/login');
+        const isEksternalContext = typeof window !== 'undefined' && 
+                                  (window.location.pathname.startsWith('/eksternal') || window.location.pathname.startsWith('/mitra'));
 
         if (!isLoginRequest && (error.response?.status === 401 || error.response?.status === 403)) {
-            // Hanya hapus token internal jika status unauthorized
-            if (localStorage.getItem('token')) {
-                localStorage.removeItem('token');
-                window.location.href = '/';
+            if (isEksternalContext) {
+                localStorage.removeItem('eksternal_token');
+                localStorage.removeItem('eksternal_user');
+            } else {
+                if (localStorage.getItem('token')) {
+                    localStorage.removeItem('token');
+                    window.location.href = '/Login';
+                }
             }
-            // Untuk eksternal/mitra, biarkan page yang menangani auto-redirect via Auth Guard
         }
         return Promise.reject(error);
     }

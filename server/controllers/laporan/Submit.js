@@ -14,7 +14,7 @@ const submitLaporan = async (req, res) => {
 
 const submitLaporanEksternal = async (req, res) => {
     try {
-        const result = await SubmitService.processLaporanEksternal(req.body, req.files);
+        const result = await SubmitService.processLaporanEksternal(req.body, req.files, req.user);
         res.status(201).json(result);
     } catch (error) {
         console.error('Submit Eksternal Error:', error);
@@ -24,7 +24,7 @@ const submitLaporanEksternal = async (req, res) => {
 
 const submitLaporanMitra = async (req, res) => {
     try {
-        const result = await SubmitService.processLaporanMitra(req.body, req.files);
+        const result = await SubmitService.processLaporanMitra(req.body, req.files, req.user);
         res.status(201).json(result);
     } catch (error) {
         console.error('Submit Mitra Error:', error);

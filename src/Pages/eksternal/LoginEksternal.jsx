@@ -30,6 +30,8 @@ const LoginEksternal = () => {
                 return;
             }
 
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
             localStorage.setItem('eksternal_token', result.token);
             localStorage.setItem('eksternal_user', JSON.stringify(result.user));
 

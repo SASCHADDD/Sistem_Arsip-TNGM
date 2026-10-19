@@ -75,7 +75,7 @@ const getKategoriId = async (jenisName) => {
     return kategoriId;
 };
 
-const processLaporanEksternal = async (data, files) => {
+const processLaporanEksternal = async (data, files, user) => {
     const { nama, instansi, email, judul, jenis, wilayah, tanggalBerakhir, keterangan } = data;
     const fileDokumen = files && files['file'] ? files['file'][0].filename : null;
     const fileLampiran = files && files['hardfile'] ? files['hardfile'][0].filename : null;
@@ -88,7 +88,7 @@ const processLaporanEksternal = async (data, files) => {
     const { wilayahId, resorId } = await getResorWilayah(wilayah);
 
     const laporan = await LaporanEksternal.create({
-        jenis_pengirim: 'pengaju simaksi',
+        jenis_pengirim: 'eksternal',
         nama_pengirim: nama,
         instansi_pengirim: instansi,
         email_pengirim: email,
@@ -104,17 +104,22 @@ const processLaporanEksternal = async (data, files) => {
         created_at: new Date()
     });
 
-    await ActivityLog.create({
-        user_id: 1, // System user ID
-        laporan_id: null,
-        action: 'SUBMIT',
-        description: `Sistem: Laporan eksternal baru berjudul "${judul}" diajukan oleh ${nama} (${instansi}).`
-    });
+    try {
+        const actorId = user?.id || 1;
+        await ActivityLog.create({
+            user_id: actorId,
+            laporan_id: null,
+            action: 'SUBMIT',
+            description: `Sistem: Laporan eksternal baru berjudul "${judul}" diajukan oleh ${nama} (${instansi}).`
+        });
+    } catch (logErr) {
+        console.warn('Peringatan: Gagal mencatat activity log eksternal:', logErr.message);
+    }
     
     return { message: 'Laporan eksternal berhasil diajukan', id: laporan.id };
 };
 
-const processLaporanMitra = async (data, files) => {
+const processLaporanMitra = async (data, files, user) => {
     const { namaPic, namaMitra, nomorPks, email, judul, jenis, wilayah, tanggalBerakhir, keterangan } = data;
     const fileDokumen = files && files['file'] ? files['file'][0].filename : null;
     const fileLampiran = files && files['hardfile'] ? files['hardfile'][0].filename : null;
@@ -144,12 +149,17 @@ const processLaporanMitra = async (data, files) => {
         created_at: new Date()
     });
 
-    await ActivityLog.create({
-        user_id: 1,
-        laporan_id: null,
-        action: 'SUBMIT',
-        description: `Sistem: Laporan mitra baru berjudul "${judul}" diajukan oleh ${namaPic} (${namaMitra}).`
-    });
+    try {
+        const actorId = user?.id || 1;
+        await ActivityLog.create({
+            user_id: actorId,
+            laporan_id: null,
+            action: 'SUBMIT',
+            description: `Sistem: Laporan mitra baru berjudul "${judul}" diajukan oleh ${namaPic} (${namaMitra}).`
+        });
+    } catch (logErr) {
+        console.warn('Peringatan: Gagal mencatat activity log mitra:', logErr.message);
+    }
     
     return { message: 'Laporan mitra berhasil diajukan', id: laporan.id };
 };

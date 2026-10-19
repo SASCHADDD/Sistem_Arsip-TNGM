@@ -130,7 +130,7 @@ const generateESertifikatPDF = async (data) => {
         throw new Error("Puppeteer tidak terinstal. Gagal membuat PDF E-Sertifikat.");
     }
     try {
-        const templatePath = path.join(__dirname, '../suratpengantar/e_sertifikat.html');
+        const templatePath = path.join(__dirname, '../../suratpengantar/e_sertifikat.html');
         let htmlContent = fs.readFileSync(templatePath, 'utf8');
 
         htmlContent = htmlContent.replace(/{{nama_penerima}}/g, data.nama_penerima || '-');
@@ -143,7 +143,7 @@ const generateESertifikatPDF = async (data) => {
 
         // 1.5. MENGISI LOGO (BASE64)
         // Membaca logo dari assets dan mengubahnya menjadi Base64 agar bisa muncul di PDF
-        const assetsDir = path.join(__dirname, '../../src/assets');
+        const assetsDir = path.join(__dirname, '../../../src/assets');
         
         // Logo TNGM
         const logoTngmPath = path.join(assetsDir, 'logo-tngm.png');

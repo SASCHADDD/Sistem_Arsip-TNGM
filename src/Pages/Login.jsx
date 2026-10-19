@@ -20,6 +20,10 @@ const Login = () => {
         try {
             const data = await login(email, password);
 
+            // Clear any stale external tokens
+            localStorage.removeItem('eksternal_token');
+            localStorage.removeItem('eksternal_user');
+
             // Store token and user data
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
