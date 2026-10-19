@@ -152,6 +152,14 @@ const authChangePassword = async (userId, data) => {
     return { token };
 };
 
+const authLogout = async (userId) => {
+    const [affectedRows] = await Pengguna.update(
+        { token_version: literal('token_version + 1') },
+        { where: { id: userId } }
+    );
+    if (affectedRows !== 1) throw new Error('Akun tidak ditemukan saat logout');
+};
+
 const authRegisterEksternal = async (data) => {
     const { nama, email, password, instansi, role } = data;
 
@@ -196,4 +204,4 @@ const authLoginEksternal = async (data) => {
     return { token, user: { id: user.id, email: user.email, nama: user.nama, instansi: user.instansi || '', role: user.role } };
 };
 
-module.exports = { authRegister, authCreateAdmin, authUpdateUser, authUploadPhoto, authLogin, authChangePassword, authRegisterEksternal, authLoginEksternal };
+module.exports = { authRegister, authCreateAdmin, authUpdateUser, authUploadPhoto, authLogin, authChangePassword, authLogout, authRegisterEksternal, authLoginEksternal };

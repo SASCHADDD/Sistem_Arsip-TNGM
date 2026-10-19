@@ -22,7 +22,7 @@ router.post(
 
 router.post('/login', authController.login);
 
-router.post('/logout', authController.logout);
+router.post('/logout', verifyToken, authController.logout);
 
 
 router.post(

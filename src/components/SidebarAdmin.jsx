@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, FileCheck, FileText, Users, UserCheck, Menu, LogOut, Library, Activity, Shield, Lock, Eye, EyeOff, Save, Loader2, User, Camera } from 'lucide-react';
-import { changePassword } from '../api/auth';
+import { changePassword, logout } from '../api/auth';
 import Swal from 'sweetalert2';
 import logo from '../assets/logo-tngm.png';
 
@@ -78,12 +78,7 @@ const SidebarAdmin = ({ children }) => {
     const handleLogout = async () => {
         setLoading(true);
         try {
-            await fetch('http://localhost:3000/api/auth/logout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
+            await logout();
         } catch (error) {
             console.error('Logout failed:', error);
         } finally {

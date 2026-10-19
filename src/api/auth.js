@@ -14,13 +14,20 @@ export const login = async (email, password) => {
 };
 
 export const logout = async () => {
+    const isExternalSession = typeof window !== 'undefined' &&
+        (window.location.pathname.startsWith('/eksternal') || window.location.pathname.startsWith('/mitra'));
     try {
         await api.post('/auth/logout');
     } catch (error) {
         console.error('Logout backend error:', error);
     } finally {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        if (isExternalSession) {
+            localStorage.removeItem('eksternal_token');
+            localStorage.removeItem('eksternal_user');
+        } else {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+        }
     }
 };
 
