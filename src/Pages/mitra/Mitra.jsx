@@ -17,7 +17,6 @@ const Mitra = () => {
         nomorPks: '',
         email: mitraUser?.email || '',
         judul: '',
-        jenis: '',
         wilayah: '',
         tanggalBerakhir: '',
         file: null,
@@ -149,7 +148,6 @@ const Mitra = () => {
             nomorPks: '',
             email: mitraUser?.email || '',
             judul: '',
-            jenis: '',
             wilayah: '',
             tanggalBerakhir: '',
             file: null,
@@ -295,48 +293,25 @@ const Mitra = () => {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                        <List size={16} className="text-green-700" />
-                                        Jenis Laporan <span className="text-red-500">*</span>
-                                    </label>
-                                    <select
-                                        name="jenis"
-                                        value={formData.jenis}
-                                        onChange={handleChange}
-                                        className="select select-bordered w-full focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all bg-gray-50/50 text-gray-900"
-                                        required
-                                    >
-                                        <option value="" disabled className="text-gray-900 bg-white">Pilih Jenis Laporan</option>
-                                        <option value="Laporan Bulanan" className="text-gray-900 bg-white">Laporan Bulanan</option>
-                                        <option value="Laporan Triwulan" className="text-gray-900 bg-white">Laporan Triwulan</option>
-                                        <option value="Laporan Tahunan" className="text-gray-900 bg-white">Laporan Tahunan</option>
-                                        <option value="Laporan Insidental" className="text-gray-900 bg-white">Laporan Insidental / Kejadian</option>
-                                        <option value="Evaluasi Kerjasama" className="text-gray-900 bg-white">Evaluasi Kerjasama</option>
-                                    </select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                        <MapPin size={16} className="text-green-700" />
-                                        Wilayah Kegiatan <span className="text-red-500">*</span>
-                                    </label>
-                                    <select
-                                        name="wilayah"
-                                        value={formData.wilayah}
-                                        onChange={handleChange}
-                                        className="select select-bordered w-full focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all bg-gray-50/50 text-gray-900"
-                                        required
-                                    >
-                                        <option value="" disabled className="text-gray-900 bg-white">Pilih Wilayah</option>
-                                        <option value="Sleman" className="text-gray-900 bg-white">Sleman</option>
-                                        <option value="Magelang" className="text-gray-900 bg-white">Magelang</option>
-                                        <option value="Klaten" className="text-gray-900 bg-white">Klaten</option>
-                                        <option value="Boyolali" className="text-gray-900 bg-white">Boyolali</option>
-                                        <option value="Lintas Wilayah" className="text-gray-900 bg-white">Lintas Wilayah</option>
-                                    </select>
-                                </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                    <MapPin size={16} className="text-green-700" />
+                                    Wilayah Kegiatan <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    name="wilayah"
+                                    value={formData.wilayah}
+                                    onChange={handleChange}
+                                    className="select select-bordered w-full focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all bg-gray-50/50 text-gray-900"
+                                    required
+                                >
+                                    <option value="" disabled className="text-gray-900 bg-white">Pilih Wilayah</option>
+                                    <option value="Sleman" className="text-gray-900 bg-white">Sleman</option>
+                                    <option value="Magelang" className="text-gray-900 bg-white">Magelang</option>
+                                    <option value="Klaten" className="text-gray-900 bg-white">Klaten</option>
+                                    <option value="Boyolali" className="text-gray-900 bg-white">Boyolali</option>
+                                    <option value="Lintas Wilayah" className="text-gray-900 bg-white">Lintas Wilayah</option>
+                                </select>
                             </div>
                         </section>
 

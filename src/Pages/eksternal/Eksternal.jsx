@@ -16,7 +16,6 @@ const Eksternal = () => {
         instansi: eksternalUser?.instansi || '',
         email: eksternalUser?.email || '',
         judul: '',
-        jenis: '',
         wilayah: '',
         tanggalBerakhir: '',
         file: null,
@@ -164,7 +163,6 @@ const Eksternal = () => {
             instansi: '',
             email: '',
             judul: '',
-            jenis: '',
             wilayah: '',
             tanggalBerakhir: '',
             file: null,
@@ -292,25 +290,6 @@ const Eksternal = () => {
                                 <h3 className="text-lg font-bold text-gray-800 border-l-4 border-green-600 pl-3">Detail & Keterangan</h3>
 
                                 <div className="space-y-5">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                            <List size={16} className="text-green-700" />
-                                            Jenis Laporan <span className="text-red-500">*</span>
-                                        </label>
-                                        <select
-                                            name="jenis"
-                                            value={formData.jenis}
-                                            onChange={handleChange}
-                                            className="select select-bordered w-full focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all bg-gray-50/50 text-gray-900"
-                                            required
-                                        >
-                                            <option value="" disabled className="text-gray-900 bg-white">Pilih Jenis Laporan</option>
-                                            <option value="Penelitian" className="text-gray-900 bg-white">Penelitian</option>
-                                            <option value="Kerjasama" className="text-gray-900 bg-white">Kerjasama</option>
-                                            <option value="Pengaduan" className="text-gray-900 bg-white">Pengaduan Masyarakat</option>
-                                            <option value="Lainnya" className="text-gray-900 bg-white">Lainnya</option>
-                                        </select>
-                                    </div>
 
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">

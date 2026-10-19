@@ -16,16 +16,30 @@ export const loginEksternal = async (email, password) => {
 };
 
 /**
- * Ambil riwayat laporan pengguna eksternal/mitra
+ * Ambil riwayat laporan pengguna eksternal
  */
 export const getRiwayatEksternal = async (token) => {
     try {
-        const response = await axios.get(`${BASE_URL}/eksternal/riwayat`, {
+        const response = await axios.get(`${BASE_URL}/eksternal/riwayat-eksternal`, {
             headers: { Authorization: `Bearer ${token}` }
         });
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Gagal mengambil riwayat laporan';
+    }
+};
+
+/**
+ * Ambil riwayat laporan pengguna mitra
+ */
+export const getRiwayatMitra = async (token) => {
+    try {
+        const response = await axios.get(`${BASE_URL}/eksternal/riwayat-mitra`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Gagal mengambil riwayat laporan mitra';
     }
 };
 

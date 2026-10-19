@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Footer from '../../components/Footer';
-import { getRiwayatEksternal, getESertifikatUrl } from '../../api/eksternal';
+import { getRiwayatEksternal, getRiwayatMitra, getESertifikatUrl } from '../../api/eksternal';
 import {
     LogOut, FileText, Clock, CheckCircle, XCircle,
     Download, Award, Send, RefreshCw, User, Building
@@ -27,10 +27,12 @@ const DashboardEksternal = () => {
     const fetchRiwayat = async () => {
         try {
             setLoading(true);
-            const data = await getRiwayatEksternal(token);
-            setReports(data);
+            const data = isMitra 
+                ? await getRiwayatMitra(token) 
+                : await getRiwayatEksternal(token);
+            setReports(Array.isArray(data) ? data : []);
         } catch (err) {
-            console.error(err);
+            console.error('Error fetching riwayat:', err);
         } finally {
             setLoading(false);
         }
@@ -182,7 +184,6 @@ const DashboardEksternal = () => {
                             <thead className="bg-gray-50 border-b border-gray-200">
                                 <tr className="text-xs uppercase tracking-wider text-gray-500">
                                     <th className="px-5 py-3 font-semibold">Judul Laporan</th>
-                                    <th className="px-5 py-3 font-semibold">Jenis</th>
                                     <th className="px-5 py-3 font-semibold">Tanggal Kirim</th>
                                     <th className="px-5 py-3 font-semibold">Status</th>
                                     <th className="px-5 py-3 font-semibold text-center">E-Sertifikat</th>
@@ -191,7 +192,7 @@ const DashboardEksternal = () => {
                             <tbody className="divide-y divide-gray-100">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan="5" className="px-5 py-10 text-center text-gray-400">
+                                        <td colSpan="4" className="px-5 py-10 text-center text-gray-400">
                                             <div className="flex flex-col items-center gap-2">
                                                 <span className="loading loading-spinner loading-md text-gray-300" />
                                                 <span className="text-sm">Memuat data...</span>
@@ -200,7 +201,7 @@ const DashboardEksternal = () => {
                                     </tr>
                                 ) : reports.length === 0 ? (
                                     <tr>
-                                        <td colSpan="5" className="px-5 py-16 text-center">
+                                        <td colSpan="4" className="px-5 py-16 text-center">
                                             <div className="flex flex-col items-center gap-3">
                                                 <FileText size={48} className="text-gray-200" />
                                                 <p className="text-gray-400 font-medium">Belum ada laporan yang dikirim</p>
@@ -225,7 +226,6 @@ const DashboardEksternal = () => {
                                                     </p>
                                                 )}
                                             </td>
-                                            <td className="px-5 py-4 text-gray-500">{r.jenis || '-'}</td>
                                             <td className="px-5 py-4 text-gray-500 whitespace-nowrap">
                                                 {new Date(r.tanggal).toLocaleDateString('id-ID', {
                                                     day: '2-digit', month: 'short', year: 'numeric'
