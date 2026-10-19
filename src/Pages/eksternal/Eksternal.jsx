@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import Footer from "../../components/Footer";
-import { UploadCloud, Camera, Image, FileText, User, Building, Mail, MapPin, List, Calendar, Send, RotateCcw, Type, LogOut, CheckCircle } from "lucide-react";
-import { submitEksternalReport, getFormOptions } from "../../api/laporan";
+import { UploadCloud, Camera, Image, FileText, User, Building, Mail, MapPin, List, Calendar, Send, RotateCcw, Type, LogOut, CheckCircle, XCircle, FileCheck } from "lucide-react";
+import { submitEksternalReport, getDetailLaporan, updateLaporanEksternal, getFormOptions } from "../../api/laporan";
 import Swal from "sweetalert2";
 
 
 const Eksternal = () => {
     const navigate = useNavigate();
+    const { id } = useParams();
+    const isEditMode = Boolean(id);
+
     const eksternalUser = JSON.parse(localStorage.getItem('eksternal_user') || 'null');
     const eksternalToken = localStorage.getItem('eksternal_token');
 
@@ -23,6 +26,10 @@ const Eksternal = () => {
         keterangan: ''
     });
 
+    const [existingFiles, setExistingFiles] = useState({ file: null, hardfile: null });
+    const [rejectionNote, setRejectionNote] = useState('');
+    const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+
     const [dragActive, setDragActive] = useState(false);
     const [dragActiveHardfile, setDragActiveHardfile] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,14 +41,53 @@ const Eksternal = () => {
             Swal.fire({
                 icon: 'warning',
                 title: 'Login Diperlukan',
-                text: 'Anda harus login terlebih dahulu untuk mengirim laporan.',
+                text: 'Anda harus login terlebih dahulu untuk mengakses halaman ini.',
                 confirmButtonColor: '#15803d',
                 confirmButtonText: 'Ke Halaman Login'
             }).then(() => navigate('/eksternal/login'));
+            return;
         } else if (eksternalUser.role !== 'eksternal') {
             navigate('/mitra/login');
+            return;
         }
-    }, []);
+
+        if (isEditMode) {
+            const fetchDetail = async () => {
+                try {
+                    setIsLoadingDetail(true);
+                    const detail = await getDetailLaporan(id, 'eksternal');
+                    setFormData({
+                        nama: detail.pelapor || eksternalUser?.nama || '',
+                        instansi: detail.instansi || eksternalUser?.instansi || '',
+                        email: detail.email || eksternalUser?.email || '',
+                        judul: detail.judul || '',
+                        wilayah: detail.resor_nama || detail.wilayah || '',
+                        tanggalBerakhir: detail.tanggal_berakhir ? detail.tanggal_berakhir.split('T')[0] : '',
+                        file: null,
+                        hardfile: null,
+                        keterangan: detail.keterangan || ''
+                    });
+                    setExistingFiles({
+                        file: detail.file_dokumen,
+                        hardfile: detail.foto_lampiran
+                    });
+                    if (detail.adminMessage) {
+                        setRejectionNote(detail.adminMessage);
+                    }
+                } catch (err) {
+                    console.error('Error fetching detail laporan:', err);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal Memuat Data',
+                        text: typeof err === 'string' ? err : 'Tidak dapat memuat data laporan untuk direvisi.'
+                    }).then(() => navigate('/eksternal/dashboard'));
+                } finally {
+                    setIsLoadingDetail(false);
+                }
+            };
+            fetchDetail();
+        }
+    }, [id]);
 
     useEffect(() => {
         const fetchOptions = async () => {
@@ -115,11 +161,20 @@ const Eksternal = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!formData.file || !formData.hardfile) {
+        if (!isEditMode && (!formData.file || !formData.hardfile)) {
             Swal.fire({
                 icon: "error",
                 title: "Incomplete Data",
                 text: "Harap lampirkan dokumen dan foto identitas/surat pengantar.",
+            });
+            return;
+        }
+
+        if (isEditMode && !formData.file && !existingFiles.file) {
+            Swal.fire({
+                icon: "error",
+                title: "Incomplete Data",
+                text: "Harap lampirkan dokumen laporan.",
             });
             return;
         }
@@ -130,19 +185,24 @@ const Eksternal = () => {
         data.append('instansi', formData.instansi);
         data.append('email', formData.email);
         data.append('judul', formData.judul);
-        data.append('jenis', formData.jenis);
         data.append('wilayah', formData.wilayah);
         if (formData.tanggalBerakhir) data.append('tanggalBerakhir', formData.tanggalBerakhir);
         if (formData.keterangan) data.append('keterangan', formData.keterangan);
-        data.append('file', formData.file);
-        data.append('hardfile', formData.hardfile);
+        if (formData.file) data.append('file', formData.file);
+        if (formData.hardfile) data.append('hardfile', formData.hardfile);
 
         try {
-            const result = await submitEksternalReport(data);
+            let result;
+            if (isEditMode) {
+                result = await updateLaporanEksternal(id, data);
+            } else {
+                result = await submitEksternalReport(data);
+            }
+
             await Swal.fire({
                 icon: "success",
                 title: "Berhasil!",
-                text: result.message || "Laporan berhasil dikirim! Terima kasih atas partisipasi Anda.",
+                text: result.message || (isEditMode ? "Laporan revisi berhasil dikirim ulang!" : "Laporan berhasil dikirim! Terima kasih atas partisipasi Anda."),
                 confirmButtonColor: '#1B5E20'
             });
             navigate('/eksternal/dashboard');
@@ -158,10 +218,14 @@ const Eksternal = () => {
     };
 
     const handleReset = () => {
+        if (isEditMode) {
+            window.location.reload();
+            return;
+        }
         setFormData({
-            nama: '',
-            instansi: '',
-            email: '',
+            nama: eksternalUser?.nama || '',
+            instansi: eksternalUser?.instansi || '',
+            email: eksternalUser?.email || '',
             judul: '',
             wilayah: '',
             tanggalBerakhir: '',
@@ -210,12 +274,38 @@ const Eksternal = () => {
                     </div>
                 )}
 
+                {/* Rejection Note Alert if in Edit Mode */}
+                {rejectionNote && (
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-red-600 mt-0.5">
+                            <XCircle size={18} />
+                        </div>
+                        <div>
+                            <h4 className="font-semibold text-red-800 text-sm">Catatan Revisi dari Verifikator:</h4>
+                            <p className="text-red-700 text-sm mt-0.5">{rejectionNote}</p>
+                            <p className="text-xs text-red-500 mt-1">Silakan sesuaikan data formulir atau unggah ulang dokumen sesuai arahan di atas, lalu klik &quot;Kirim Ulang Revisi&quot;.</p>
+                        </div>
+                    </div>
+                )}
+
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                     <div className="p-8 border-b border-gray-100 bg-white">
-                        <h1 className="text-2xl font-bold text-gray-900">Form Laporan Eksternal</h1>
-                        <p className="text-gray-500 mt-2">Silakan lengkapi form di bawah ini untuk mengajukan laporan atau permohonan kerjasama dari pihak eksternal.</p>
+                        <h1 className="text-2xl font-bold text-gray-900">
+                            {isEditMode ? 'Form Revisi Laporan Eksternal' : 'Form Laporan Eksternal'}
+                        </h1>
+                        <p className="text-gray-500 mt-2">
+                            {isEditMode 
+                                ? 'Silakan perbaiki data atau unggah dokumen revisi sesuai catatan verifikator.' 
+                                : 'Silakan lengkapi form di bawah ini untuk mengajukan laporan atau permohonan kerjasama dari pihak eksternal.'}
+                        </p>
                     </div>
 
+                    {isLoadingDetail ? (
+                        <div className="p-16 flex flex-col items-center justify-center gap-3 text-gray-400">
+                            <span className="loading loading-spinner loading-lg text-green-700" />
+                            <span className="text-sm font-medium">Memuat data laporan...</span>
+                        </div>
+                    ) : (
                     <form onSubmit={handleSubmit} className="p-8 flex flex-col gap-8">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10 items-stretch">
                             {/* Column 1: Informasi Pelapor */}
@@ -394,6 +484,19 @@ const Eksternal = () => {
                                                         Hapus file
                                                     </button>
                                                 </div>
+                                            ) : existingFiles.file ? (
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700">
+                                                        <FileCheck size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">File Tersimpan Saat Ini:</p>
+                                                        <p className="font-medium text-gray-800 max-w-xs truncate">{existingFiles.file}</p>
+                                                    </div>
+                                                    <label htmlFor="file-upload" className="cursor-pointer text-xs text-green-700 font-semibold hover:underline mt-1 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
+                                                        Ganti Dokumen Baru
+                                                    </label>
+                                                </div>
                                             ) : (
                                                 <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center gap-2">
                                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors
@@ -456,12 +559,25 @@ const Eksternal = () => {
                                                         Hapus foto
                                                     </button>
                                                 </div>
+                                            ) : existingFiles.hardfile ? (
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700">
+                                                        <Image size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Foto Tersimpan Saat Ini:</p>
+                                                        <p className="font-medium text-gray-800 max-w-xs truncate">{existingFiles.hardfile}</p>
+                                                    </div>
+                                                    <label htmlFor="hardfile-upload" className="cursor-pointer text-xs text-green-700 font-semibold hover:underline mt-1 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
+                                                        Ganti Foto Baru
+                                                    </label>
+                                                </div>
                                             ) : (
                                                 <label htmlFor="hardfile-upload" className="cursor-pointer flex flex-col items-center gap-2">
                                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors
                                                 ${dragActiveHardfile ? "bg-green-200 text-green-700" : "bg-gray-100 text-gray-400"}
                                             `}>
-                                                        <Camera size={20} />
+                                                <Camera size={20} />
                                                     </div>
                                                     <div>
                                                         <p className="font-medium text-gray-700 text-sm">Klik untuk upload foto</p>
@@ -487,7 +603,7 @@ const Eksternal = () => {
                                 className="btn btn-ghost text-gray-500 hover:text-gray-700 hover:bg-gray-100 gap-2 font-normal"
                             >
                                 <RotateCcw size={18} />
-                                Reset Form
+                                {isEditMode ? 'Muat Ulang' : 'Reset Form'}
                             </button>
                             <button
                                 type="submit"
@@ -497,17 +613,18 @@ const Eksternal = () => {
                                 {isSubmitting ? (
                                     <>
                                         <span className="loading loading-spinner loading-sm"></span>
-                                        Mengirim...
+                                        Mengirim Revisi...
                                     </>
                                 ) : (
                                     <>
                                         <Send size={18} />
-                                        Kirim Laporan
+                                        {isEditMode ? 'Kirim Ulang Revisi' : 'Kirim Laporan'}
                                     </>
                                 )}
                             </button>
                         </div>
                     </form>
+                    )}
                 </div>
             </main>
 

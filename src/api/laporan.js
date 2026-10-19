@@ -64,6 +64,19 @@ export const updateLaporan = async (id, formData) => {
     }
 };
 
+export const updateLaporanEksternal = async (id, formData) => {
+    try {
+        const response = await api.put(`/laporan/eksternal/${id}`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Gagal memperbarui laporan';
+    }
+};
+
 export const getUserDashboardStats = async () => {
     try {
         const response = await api.get('/laporan/stats');

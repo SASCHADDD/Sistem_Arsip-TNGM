@@ -37,9 +37,11 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/Login" element={<Login />} />
           <Route path='/eksternal/Eksternal' element={<Eksternal />} />
+          <Route path='/eksternal/edit/:id' element={<Eksternal />} />
           <Route path='/eksternal/login' element={<LoginEksternal />} />
           <Route path='/eksternal/dashboard' element={<DashboardEksternal />} />
           <Route path='/mitra/Mitra' element={<Mitra />} />
+          <Route path='/mitra/edit/:id' element={<Mitra />} />
           <Route path='/mitra/login' element={<LoginMitra />} />
           <Route path='/mitra/dashboard' element={<DashboardEksternal />} />
 

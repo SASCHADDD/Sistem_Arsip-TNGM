@@ -45,7 +45,10 @@ const formatEksternalRow = (row, tipeLabel) => {
 
 const getEksternal = async (email) => {
     const rows = await LaporanEksternal.findAll({
-        where: { email_pengirim: email, jenis_pengirim: 'eksternal' },
+        where: { 
+            email_pengirim: email, 
+            jenis_pengirim: ['eksternal', 'pengaju simaksi'] 
+        },
         include: [
             { model: Kategori, as: 'kategori_rel', attributes: ['nama_kategori'] }
         ],

@@ -40,4 +40,14 @@ const uploadSusulan = async (req, res) => {
     }
 };
 
-module.exports = { deleteLaporan, updateLaporan, inputArsipLama, uploadSusulan };
+const updateLaporanEksternal = async (req, res) => {
+    try {
+        const result = await ManageService.ubahLaporanEksternal(req.params.id, req.body, req.files, req.user);
+        res.json(result);
+    } catch (error) {
+        console.error('Update Laporan Eksternal Error:', error);
+        res.status(error.message.includes('tidak ditemukan') ? 404 : error.message.includes('disetujui') ? 403 : 500).json({ message: error.message || 'Gagal memperbarui laporan' });
+    }
+};
+
+module.exports = { deleteLaporan, updateLaporan, updateLaporanEksternal, inputArsipLama, uploadSusulan };

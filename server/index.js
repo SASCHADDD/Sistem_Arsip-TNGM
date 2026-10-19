@@ -23,11 +23,14 @@ app.use('/api/users', userRoutes);
 app.use('/api/eksternal', eksternalRoutes);
 
 const path = require('path'); // Ensure path is imported
-app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
-    setHeaders: (res, path) => {
-        // Optionally only set for specific types, or simply generic 'inline' so browser handles it natively
-        res.setHeader('Content-Disposition', 'inline');
-    }
+const uploadsDir = path.join(__dirname, '../uploads');
+const outputDir = path.join(__dirname, '../uploads/output');
+
+app.use('/uploads/laporan/output', express.static(outputDir, {
+    setHeaders: (res) => res.setHeader('Content-Disposition', 'inline')
+}));
+app.use('/uploads', express.static(uploadsDir, {
+    setHeaders: (res) => res.setHeader('Content-Disposition', 'inline')
 }));
 
 const PORT = process.env.PORT || 3000;

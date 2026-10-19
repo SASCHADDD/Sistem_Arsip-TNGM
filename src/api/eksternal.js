@@ -84,4 +84,4 @@ export const submitLaporanMitraPublic = async (formData) => {
  * Buat URL download E-Sertifikat PDF
  */
 export const getESertifikatUrl = (filename) =>
-    `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000'}/uploads/laporan/output/${filename}`;
+    `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000'}/uploads/output/${filename}`;

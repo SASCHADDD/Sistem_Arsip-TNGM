@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import Footer from "../../components/Footer";
-import { UploadCloud, Camera, Image, FileText, Handshake, User, Building, Mail, FileCheck, List, MapPin, Send, RotateCcw, Type, LogOut, CheckCircle } from "lucide-react";
-import { submitMitraReport } from "../../api/laporan";
+import { UploadCloud, Camera, Image, FileText, Handshake, User, Building, Mail, FileCheck, List, MapPin, Send, RotateCcw, Type, LogOut, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { submitMitraReport, getDetailLaporan, updateLaporanEksternal } from "../../api/laporan";
 import Swal from 'sweetalert2';
 
 
 const Mitra = () => {
     const navigate = useNavigate();
+    const { id } = useParams();
+    const isEditMode = Boolean(id);
+
     const mitraUser = JSON.parse(localStorage.getItem('eksternal_user') || 'null');
     const mitraToken = localStorage.getItem('eksternal_token');
 
@@ -24,6 +27,10 @@ const Mitra = () => {
         keterangan: ''
     });
 
+    const [existingFiles, setExistingFiles] = useState({ file: null, hardfile: null });
+    const [rejectionNote, setRejectionNote] = useState('');
+    const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+
     const [dragActive, setDragActive] = useState(false);
     const [dragActiveHardfile, setDragActiveHardfile] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,14 +41,54 @@ const Mitra = () => {
             Swal.fire({
                 icon: 'warning',
                 title: 'Login Diperlukan',
-                text: 'Anda harus login terlebih dahulu untuk mengirim laporan Mitra.',
+                text: 'Anda harus login terlebih dahulu untuk mengakses halaman ini.',
                 confirmButtonColor: '#7c3aed',
                 confirmButtonText: 'Ke Halaman Login'
             }).then(() => navigate('/mitra/login'));
+            return;
         } else if (mitraUser.role !== 'mitra') {
             navigate('/eksternal/login');
+            return;
         }
-    }, []);
+
+        if (isEditMode) {
+            const fetchDetail = async () => {
+                try {
+                    setIsLoadingDetail(true);
+                    const detail = await getDetailLaporan(id, 'mitra');
+                    setFormData({
+                        namaPic: detail.pelapor || mitraUser?.nama || '',
+                        namaMitra: detail.instansi || mitraUser?.instansi || '',
+                        nomorPks: detail.nomor_pks || '',
+                        email: detail.email || mitraUser?.email || '',
+                        judul: detail.judul || '',
+                        wilayah: detail.wilayah || '',
+                        tanggalBerakhir: detail.tanggal_berakhir ? detail.tanggal_berakhir.split('T')[0] : '',
+                        file: null,
+                        hardfile: null,
+                        keterangan: detail.keterangan || ''
+                    });
+                    setExistingFiles({
+                        file: detail.file_dokumen,
+                        hardfile: detail.foto_lampiran
+                    });
+                    if (detail.adminMessage) {
+                        setRejectionNote(detail.adminMessage);
+                    }
+                } catch (err) {
+                    console.error('Error fetching detail laporan:', err);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal Memuat Data',
+                        text: typeof err === 'string' ? err : 'Tidak dapat memuat data laporan untuk direvisi.'
+                    }).then(() => navigate('/mitra/dashboard'));
+                } finally {
+                    setIsLoadingDetail(false);
+                }
+            };
+            fetchDetail();
+        }
+    }, [id]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -101,11 +148,20 @@ const Mitra = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!formData.file || !formData.hardfile) {
+        if (!isEditMode && (!formData.file || !formData.hardfile)) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Opps...',
                 text: 'Harap lampirkan dokumen laporan dan foto dokumentasi kegiatan.'
+            });
+            return;
+        }
+
+        if (isEditMode && !formData.file && !existingFiles.file) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Dokumen Kosong',
+                text: 'Harap lampirkan dokumen laporan kegiatan.'
             });
             return;
         }
@@ -120,11 +176,17 @@ const Mitra = () => {
         });
 
         try {
-            const result = await submitMitraReport(submitData);
+            let result;
+            if (isEditMode) {
+                result = await updateLaporanEksternal(id, submitData);
+            } else {
+                result = await submitMitraReport(submitData);
+            }
+
             await Swal.fire({
                 icon: 'success',
                 title: 'Berhasil!',
-                text: result.message || 'Laporan Mitra Anda telah berhasil dikirim.',
+                text: result.message || (isEditMode ? 'Laporan revisi Anda telah berhasil dikirim ulang.' : 'Laporan Mitra Anda telah berhasil dikirim.'),
                 confirmButtonColor: '#1B5E20'
             });
             navigate('/mitra/dashboard');
@@ -142,6 +204,10 @@ const Mitra = () => {
 
 
     const handleReset = () => {
+        if (isEditMode) {
+            window.location.reload();
+            return;
+        }
         setFormData({
             namaPic: mitraUser?.nama || '',
             namaMitra: mitraUser?.instansi || '',
@@ -195,17 +261,43 @@ const Mitra = () => {
                     </div>
                 )}
 
+                {/* Rejection Note Alert if in Edit Mode */}
+                {rejectionNote && (
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-red-600 mt-0.5">
+                            <XCircle size={18} />
+                        </div>
+                        <div>
+                            <h4 className="font-semibold text-red-800 text-sm">Catatan Revisi dari Verifikator:</h4>
+                            <p className="text-red-700 text-sm mt-0.5">{rejectionNote}</p>
+                            <p className="text-xs text-red-500 mt-1">Silakan sesuaikan data formulir atau unggah ulang dokumen sesuai arahan di atas, lalu klik &quot;Kirim Ulang Revisi&quot;.</p>
+                        </div>
+                    </div>
+                )}
+
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                     <div className="p-8 border-b border-gray-100 bg-white">
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-2 bg-green-100 rounded-lg text-green-700">
                                 <Handshake size={24} />
                             </div>
-                            <h1 className="text-2xl font-bold text-gray-900">Form Laporan Mitra</h1>
+                            <h1 className="text-2xl font-bold text-gray-900">
+                                {isEditMode ? 'Form Revisi Laporan Mitra' : 'Form Laporan Mitra'}
+                            </h1>
                         </div>
-                        <p className="text-gray-500">Form khusus untuk mitra kerja TNGM dalam menyampaikan laporan kegiatan atau kerjasama.</p>
+                        <p className="text-gray-500">
+                            {isEditMode 
+                                ? 'Silakan sesuaikan data laporan atau unggah dokumen revisi sesuai catatan verifikator.' 
+                                : 'Form khusus untuk mitra kerja TNGM dalam menyampaikan laporan kegiatan atau kerjasama.'}
+                        </p>
                     </div>
 
+                    {isLoadingDetail ? (
+                        <div className="p-16 flex flex-col items-center justify-center gap-3 text-gray-400">
+                            <span className="loading loading-spinner loading-lg text-green-700" />
+                            <span className="text-sm font-medium">Memuat data laporan...</span>
+                        </div>
+                    ) : (
                     <form onSubmit={handleSubmit} className="p-8 space-y-8">
                         {/* Section 1: Data Mitra */}
                         <section className="space-y-6">
@@ -360,6 +452,19 @@ const Mitra = () => {
                                                 Hapus file
                                             </button>
                                         </div>
+                                    ) : existingFiles.file ? (
+                                        <div className="flex flex-col items-center gap-2">
+                                            <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-700">
+                                                <FileCheck size={24} />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">File Tersimpan Saat Ini:</p>
+                                                <p className="font-medium text-gray-800 max-w-xs truncate">{existingFiles.file}</p>
+                                            </div>
+                                            <label htmlFor="file-upload" className="cursor-pointer text-xs text-purple-700 font-semibold hover:underline mt-1 bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-200">
+                                                Ganti Dokumen Baru
+                                            </label>
+                                        </div>
                                     ) : (
                                         <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center gap-3">
                                             <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors
@@ -422,6 +527,19 @@ const Mitra = () => {
                                                 Hapus foto
                                             </button>
                                         </div>
+                                    ) : existingFiles.hardfile ? (
+                                        <div className="flex flex-col items-center gap-2">
+                                            <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-700">
+                                                <Image size={24} />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Foto Dokumentasi Saat Ini:</p>
+                                                <p className="font-medium text-gray-800 max-w-xs truncate">{existingFiles.hardfile}</p>
+                                            </div>
+                                            <label htmlFor="hardfile-upload" className="cursor-pointer text-xs text-purple-700 font-semibold hover:underline mt-1 bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-200">
+                                                Ganti Foto Baru
+                                            </label>
+                                        </div>
                                     ) : (
                                         <label htmlFor="hardfile-upload" className="cursor-pointer flex flex-col items-center gap-3">
                                             <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors
@@ -466,7 +584,7 @@ const Mitra = () => {
                                 className="btn btn-ghost text-gray-500 hover:text-gray-700 hover:bg-gray-100 gap-2 font-normal"
                             >
                                 <RotateCcw size={18} />
-                                Reset Form
+                                {isEditMode ? 'Muat Ulang' : 'Reset Form'}
                             </button>
                             <button
                                 type="submit"
@@ -476,17 +594,18 @@ const Mitra = () => {
                                 {isSubmitting ? (
                                     <>
                                         <span className="loading loading-spinner loading-sm"></span>
-                                        Mengirim...
+                                        Mengirim Revisi...
                                     </>
                                 ) : (
                                     <>
                                         <Send size={18} />
-                                        Kirim Laporan Mitra
+                                        {isEditMode ? 'Kirim Ulang Revisi' : 'Kirim Laporan Mitra'}
                                     </>
                                 )}
                             </button>
                         </div>
                     </form>
+                    )}
                 </div>
             </main>
 

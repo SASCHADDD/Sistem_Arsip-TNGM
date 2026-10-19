@@ -6,19 +6,26 @@ const getDetail = async (id, source, user) => {
         const row = await LaporanEksternal.findByPk(id, {
             include: [
                 { model: Kategori, as: 'kategori_rel', attributes: ['nama_kategori'] },
-                { model: Wilayah, as: 'wilayah_rel', attributes: ['nama_wilayah'] }
+                { model: Wilayah, as: 'wilayah_rel', attributes: ['nama_wilayah'] },
+                { model: Resor, as: 'resor_rel', attributes: ['nama_resor'] }
             ]
         });
 
         if (!row) throw new Error('NOT_FOUND');
 
+        const resorNama = row.resor_rel ? row.resor_rel.nama_resor : null;
+        const wilayahNama = row.wilayah_rel ? row.wilayah_rel.nama_wilayah : 'Balai TNGM';
+
         return {
             id: row.id, judul: row.judul_laporan, jenis: row.kategori_rel ? row.kategori_rel.nama_kategori : '-', jenis_value: row.jenis_pengirim,
             tanggal_berakhir: row.tanggal_berakhir, tanggal_buat: row.created_at,
-            wilayah: row.wilayah_rel ? row.wilayah_rel.nama_wilayah : 'Balai TNGM', resor: row.instansi_pengirim || '-',
+            wilayah: wilayahNama,
+            resor: resorNama || wilayahNama,
+            resor_nama: resorNama,
             keterangan: row.keterangan, status: row.status, penilaian: null,
             file_dokumen: row.file_dokumen, foto_lampiran: row.file_lampiran, file_output: row.file_output,
             pelapor: row.nama_pengirim, instansi: row.instansi_pengirim, email: row.email_pengirim,
+            nomor_pks: row.nomor_pks || '',
             tipe: row.jenis_pengirim, adminMessage: row.catatan || null, is_mutasi: false
         };
     }

@@ -18,6 +18,7 @@ router.get('/form-options', formController.getFormOptions);
 // --- AUTHENTICATED ROUTES Eksternal & Mitra (wajib login) ---
 router.post('/submit-eksternal', verifyToken, handleUploadEksternal, submitController.submitLaporanEksternal);
 router.post('/submit-mitra', verifyToken, handleUploadEksternal, submitController.submitLaporanMitra);
+router.put('/eksternal/:id', verifyToken, handleUploadEksternal, manageController.updateLaporanEksternal);
 router.get('/riwayat-eksternal', verifyToken, riwayatController.getRiwayatEksternal);
 router.get('/riwayat-mitra', verifyToken, riwayatController.getRiwayatMitra);
 
