@@ -123,7 +123,8 @@ CREATE TABLE `pengguna` (
   `role` enum('admin_balai','admin_wilayah','kepala_wilayah','staff','eksternal','mitra') NOT NULL,
   `wilayah_id` int(11) DEFAULT NULL,
   `resor_id` int(11) DEFAULT NULL,
-  `foto` varchar(255) DEFAULT NULL
+  `foto` varchar(255) DEFAULT NULL,
+  `token_version` int(10) unsigned NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
