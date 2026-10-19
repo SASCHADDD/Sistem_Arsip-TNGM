@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Download, FileText, FileImage } from "lucide-react";
+import { ArrowLeft, Download, FileText } from "lucide-react";
 
 const PreviewDokumen = () => {
     const navigate = useNavigate();
@@ -19,13 +19,10 @@ const PreviewDokumen = () => {
 
     const isImage = fileUrl.match(/\.(jpeg|jpg|gif|png|heic|heif|webp)$/i);
     const isPdf = fileUrl.match(/\.(pdf)$/i);
-    // Jika docx, kita tidak bisa render iframe
-    const isDocx = fileUrl.match(/\.(doc|docx)$/i);
-
     return (
-        <div className="min-h-screen bg-gray-100 flex flex-col">
+        <div className="h-screen overflow-hidden bg-gray-100 flex flex-col">
             {/* Header */}
-            <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm z-10">
+            <div className="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm z-10">
                 <div className="flex items-center gap-4">
                     <button 
                         onClick={() => navigate(-1)}
@@ -53,7 +50,7 @@ const PreviewDokumen = () => {
             </div>
 
             {/* Viewer Area */}
-            <div className="flex-1 overflow-hidden relative bg-gray-100 flex items-center justify-center">
+            <div className="relative flex-1 min-h-0 overflow-hidden bg-gray-100 flex items-center justify-center">
                 {isImage && (
                     <div className="w-full h-full p-8 flex items-center justify-center overflow-auto">
                         <img 
@@ -67,7 +64,7 @@ const PreviewDokumen = () => {
                 {isPdf && (
                     <iframe 
                         src={fileUrl}
-                        className="w-full h-full border-none bg-gray-100"
+                        className="absolute inset-0 block h-full w-full border-0 bg-gray-100"
                         title="PDF Viewer"
                     />
                 )}
