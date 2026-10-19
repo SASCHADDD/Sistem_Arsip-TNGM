@@ -5,12 +5,17 @@ const { logActivity } = require('../activity/activityLogger');
 
 const verifyLaporanLogic = async (id, status, catatan, source_table, user) => {
     let fileOutput = null;
+    const isRegionalAdmin = user.role === 'admin_wilayah' || user.role === 'kepala_wilayah';
 
     if (source_table === 'internal') {
         const laporan = await LaporanInternal.findByPk(id, {
             include: [{ model: Pengguna, as: 'pembuat', attributes: ['nama'] }]
         });
         if (!laporan) throw new Error('Laporan Internal tidak ditemukan');
+        if (isRegionalAdmin && Number(laporan.wilayah_id) !== Number(user.wilayah_id)) {
+            throw new Error('Akses ditolak: laporan berada di luar wilayah Anda.');
+        }
+        if (laporan.status !== 'Pending') throw new Error('Laporan sudah diproses.');
         
         let updateData = { status, catatan: catatan || '' };
 
@@ -41,6 +46,10 @@ const verifyLaporanLogic = async (id, status, catatan, source_table, user) => {
     } else if (source_table === 'eksternal') {
         const laporan = await LaporanEksternal.findByPk(id);
         if (!laporan) throw new Error('Laporan Eksternal tidak ditemukan');
+        if (isRegionalAdmin && Number(laporan.wilayah_id) !== Number(user.wilayah_id)) {
+            throw new Error('Akses ditolak: laporan berada di luar wilayah Anda.');
+        }
+        if (laporan.status !== 'pending') throw new Error('Laporan sudah diproses.');
         
         let updateData = { status, catatan: catatan || '' };
 

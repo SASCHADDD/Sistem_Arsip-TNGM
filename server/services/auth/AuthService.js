@@ -1,9 +1,26 @@
 const { Pengguna, Wilayah, Resor } = require('../../models');
+const { literal } = require('sequelize');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { jwtSecret } = require('../../config/jwt');
 
-const authRegister = async (data) => {
+const authRegister = async (data, actor) => {
     const { nama, email, password, wilayah_id, resor_id } = data;
+
+    let assignedWilayahId = wilayah_id || null;
+    let assignedResorId = resor_id || null;
+    if (actor.role === 'admin_wilayah' || actor.role === 'kepala_wilayah') {
+        if (Number(wilayah_id) !== Number(actor.wilayah_id)) {
+            throw new Error('Akses ditolak: akun harus ditempatkan di wilayah Anda.');
+        }
+        assignedWilayahId = actor.wilayah_id;
+        if (assignedResorId) {
+            const resor = await Resor.findByPk(assignedResorId);
+            if (!resor || Number(resor.wilayah_id) !== Number(actor.wilayah_id)) {
+                throw new Error('Akses ditolak: resor tidak berada di wilayah Anda.');
+            }
+        }
+    }
 
     const existingUser = await Pengguna.findOne({ where: { email } });
     if (existingUser) throw new Error('Email sudah terdaftar');
@@ -14,8 +31,8 @@ const authRegister = async (data) => {
         email,
         password: hashedPassword,
         role: 'staff',
-        wilayah_id: wilayah_id || null,
-        resor_id: resor_id || null,
+        wilayah_id: assignedWilayahId,
+        resor_id: assignedResorId,
         is_active: 1
     });
 
@@ -71,7 +88,7 @@ const authLogin = async (data) => {
     });
 
     if (!user) throw new Error('Email atau password salah');
-    if (user.is_active === 0) throw new Error('Akun Anda telah dinonaktifkan. Silakan hubungi administrator.');
+    if (Number(user.is_active) !== 1) throw new Error('Akun Anda telah dinonaktifkan. Silakan hubungi administrator.');
 
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) throw new Error('Email atau password salah');
@@ -82,8 +99,8 @@ const authLogin = async (data) => {
     }
 
     const token = jwt.sign(
-        { id: user.id, nama: user.nama, email: user.email, role: user.role, wilayah_id: user.wilayah_id, resor_id: user.resor_id },
-        process.env.JWT_SECRET || 'secret_key_rahasia',
+        { id: user.id, nama: user.nama, email: user.email, role: user.role, wilayah_id: user.wilayah_id, resor_id: user.resor_id, token_version: Number(user.token_version) },
+        jwtSecret,
         { expiresIn: '10h' }
     );
 
@@ -103,14 +120,36 @@ const authChangePassword = async (userId, data) => {
     const { oldPassword, newPassword } = data;
     if (!oldPassword || !newPassword) throw new Error('Password lama dan baru wajib diisi');
 
-    const user = await Pengguna.findByPk(userId, { attributes: ['id', 'password'] });
+    const user = await Pengguna.findByPk(userId, {
+        attributes: ['id', 'nama', 'email', 'password', 'role', 'wilayah_id', 'resor_id', 'instansi', 'token_version']
+    });
     if (!user) throw new Error('User tidak ditemukan');
 
     const isMatch = await bcrypt.compare(oldPassword, user.password);
     if (!isMatch) throw new Error('Password lama tidak sesuai');
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await user.update({ password: hashedPassword });
+    await user.update({
+        password: hashedPassword,
+        token_version: literal('token_version + 1')
+    });
+    await user.reload();
+
+    const token = jwt.sign(
+        {
+            id: user.id,
+            nama: user.nama,
+            email: user.email,
+            role: user.role,
+            wilayah_id: user.wilayah_id,
+            resor_id: user.resor_id,
+            instansi: user.instansi || '',
+            token_version: Number(user.token_version)
+        },
+        jwtSecret,
+        { expiresIn: ['eksternal', 'mitra'].includes(user.role) ? '8h' : '10h' }
+    );
+    return { token };
 };
 
 const authRegisterEksternal = async (data) => {
@@ -143,13 +182,14 @@ const authLoginEksternal = async (data) => {
     });
     
     if (!user) throw new Error('Email atau password salah');
+    if (Number(user.is_active) !== 1) throw new Error('Akun Anda telah dinonaktifkan. Silakan hubungi administrator.');
 
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) throw new Error('Email atau password salah');
 
     const token = jwt.sign(
-        { id: user.id, email: user.email, nama: user.nama, instansi: user.instansi || '', role: user.role },
-        process.env.JWT_SECRET || 'secret_key_rahasia',
+        { id: user.id, email: user.email, nama: user.nama, instansi: user.instansi || '', role: user.role, token_version: Number(user.token_version) },
+        jwtSecret,
         { expiresIn: '8h' }
     );
 

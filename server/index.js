@@ -1,11 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const authRoutes = require('./routes/Auth.Routes');
 
 dotenv.config();
+require('./config/jwt');
 
 const app = express();
+const authRoutes = require('./routes/Auth.Routes');
 
 app.use(cors({
     origin: 'http://localhost:5173',
@@ -16,20 +17,18 @@ app.use(express.json());
 const laporanRoutes = require('./routes/Laporan.Routes');
 const userRoutes = require('./routes/User.Routes');
 const eksternalRoutes = require('./routes/Eksternal.Routes');
+const filesRoutes = require('./authorization/Files.Routes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/laporan', laporanRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/eksternal', eksternalRoutes);
+app.use('/api/files', filesRoutes);
 
-const path = require('path'); // Ensure path is imported
+const path = require('path');
 const uploadsDir = path.join(__dirname, '../uploads');
-const outputDir = path.join(__dirname, '../uploads/output');
-
-app.use('/uploads/laporan/output', express.static(outputDir, {
-    setHeaders: (res) => res.setHeader('Content-Disposition', 'inline')
-}));
-app.use('/uploads', express.static(uploadsDir, {
+const profileDir = path.join(uploadsDir, 'profile');
+app.use('/uploads/profile', express.static(profileDir, {
     setHeaders: (res) => res.setHeader('Content-Disposition', 'inline')
 }));
 

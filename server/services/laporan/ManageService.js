@@ -64,20 +64,27 @@ const ubahLaporan = async (id, data, files, user) => {
 };
 
 const ubahLaporanEksternal = async (id, data, files, user) => {
-    const laporan = await LaporanEksternal.findOne({ where: { id } });
+    const jenisPengirim = user.role === 'mitra'
+        ? 'mitra'
+        : user.role === 'eksternal'
+            ? { [Op.in]: ['eksternal', 'pengaju simaksi'] }
+            : null;
+    if (!jenisPengirim) throw new Error('Akses ditolak untuk akun ini.');
+
+    const laporan = await LaporanEksternal.findOne({
+        where: { id, jenis_pengirim: jenisPengirim, email_pengirim: user.email }
+    });
     if (!laporan) throw new Error('Laporan tidak ditemukan');
 
     if (laporan.status === 'Approved' || laporan.status === 'approved') {
         throw new Error('Laporan yang sudah disetujui tidak dapat diedit');
     }
 
-    const { namaPic, namaMitra, nomorPks, judul, wilayah, tanggalBerakhir, keterangan, nama, instansi } = data;
+    const { nomorPks, judul, wilayah, tanggalBerakhir, keterangan } = data;
 
     let updateData = {
         judul_laporan: judul || laporan.judul_laporan,
-        nama_pengirim: namaPic || nama || laporan.nama_pengirim,
-        instansi_pengirim: namaMitra || instansi || laporan.instansi_pengirim,
-        nomor_pks: nomorPks !== undefined ? nomorPks : laporan.nomor_pks,
+        nomor_pks: user.role === 'mitra' && nomorPks !== undefined ? nomorPks : laporan.nomor_pks,
         tanggal_berakhir: tanggalBerakhir || laporan.tanggal_berakhir,
         keterangan: keterangan !== undefined ? keterangan : laporan.keterangan,
         status: 'pending',
@@ -150,6 +157,18 @@ const tanganiArsipLama = async (data, files, user) => {
         throw new Error('Mohon lengkapi data judul, jenis laporan, dan tanggal berakhir kegiatan.');
     }
 
+    if (user.role !== 'admin_balai') {
+        if (Number(wilayah_id) !== Number(user.wilayah_id)) {
+            throw new Error('Akses ditolak: arsip harus berada di wilayah Anda.');
+        }
+        if (resor_id) {
+            const resor = await Resor.findByPk(resor_id);
+            if (!resor || Number(resor.wilayah_id) !== Number(user.wilayah_id)) {
+                throw new Error('Akses ditolak: resor tidak berada di wilayah Anda.');
+            }
+        }
+    }
+
     const fileDokumen = files && files['file_dokumen'] ? files['file_dokumen'][0].filename : null;
     const fileLampiran = files && files['file_lampiran'] ? files['file_lampiran'][0].filename : null;
 
@@ -171,7 +190,7 @@ const tanganiArsipLama = async (data, files, user) => {
     return { message: 'Arsip lama berhasil disimpan' };
 };
 
-const unggahPDFSusulan = async (id, source, files) => {
+const unggahPDFSusulan = async (id, source, files, user) => {
     if (!files || (!files['file_dokumen'] && !files['file'])) {
         throw new Error('Harap unggah file PDF dokumen.');
     }
@@ -180,10 +199,14 @@ const unggahPDFSusulan = async (id, source, files) => {
 
     let affected = 0;
     if (source === 'internal') {
-        const [num] = await LaporanInternal.update({ file_laporan: fileName }, { where: { id } });
+        const where = { id };
+        if (user.role !== 'admin_balai') where.wilayah_id = user.wilayah_id;
+        const [num] = await LaporanInternal.update({ file_laporan: fileName }, { where });
         affected = num;
     } else if (source === 'eksternal') {
-        const [num] = await LaporanEksternal.update({ file_dokumen: fileName }, { where: { id } });
+        const where = { id };
+        if (user.role !== 'admin_balai') where.wilayah_id = user.wilayah_id;
+        const [num] = await LaporanEksternal.update({ file_dokumen: fileName }, { where });
         affected = num;
     } else {
         throw new Error('Sumber asal laporan tidak valid.');

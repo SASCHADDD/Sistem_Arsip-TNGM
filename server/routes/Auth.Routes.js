@@ -1,11 +1,24 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/auth/Auth');
-const { verifyToken, authorizeRoles } = require('../middlewares/Auth.Middleware');
+const { verifyToken, authorizeRoles, requireWilayah } = require('../middlewares/Auth.Middleware');
 const { configureUpload } = require('../middlewares/Upload.Middleware');
 const uploadProfile = configureUpload('profile');
+const adminRoles = ['admin_balai', 'admin_wilayah', 'kepala_wilayah'];
+const profileOwnerOrAdmin = (req, res, next) => {
+  if (Number(req.user.id) !== Number(req.params.id) && req.user.role !== 'admin_balai') {
+    return res.status(403).json({ message: 'Anda tidak memiliki hak untuk mengubah foto profil pengguna ini.' });
+  }
+  next();
+};
 
-router.post('/register', authController.register);
+router.post(
+  '/register',
+  verifyToken,
+  authorizeRoles(...adminRoles),
+  requireWilayah,
+  authController.register
+);
 
 router.post('/login', authController.login);
 
@@ -28,6 +41,7 @@ router.put(
 router.put(
   '/upload-photo/:id',
   verifyToken,
+  profileOwnerOrAdmin,
   uploadProfile.single('foto'),
   authController.uploadPhoto
 );

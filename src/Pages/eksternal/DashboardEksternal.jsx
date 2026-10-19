@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Footer from '../../components/Footer';
-import { getRiwayatEksternal, getRiwayatMitra, getESertifikatUrl } from '../../api/eksternal';
+import { getRiwayatEksternal, getRiwayatMitra } from '../../api/eksternal';
+import { downloadProtectedFile } from '../../api/files';
 import {
     LogOut, FileText, Clock, CheckCircle, XCircle,
     Download, Award, Send, RefreshCw, User, Building, Edit3
@@ -237,15 +238,21 @@ const DashboardEksternal = () => {
                                             </td>
                                             <td className="px-5 py-4 text-center">
                                                 {r.file_sertifikat ? (
-                                                    <a
-                                                        href={getESertifikatUrl(r.file_sertifikat)}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
+                                                    <button
+                                                        type="button"
+                                                        onClick={async () => {
+                                                            try {
+                                                                await downloadProtectedFile('output', r.file_sertifikat);
+                                                            } catch (error) {
+                                                                console.error('Gagal mengunduh E-Sertifikat:', error);
+                                                                Swal.fire('Gagal', 'E-Sertifikat tidak dapat diunduh.', 'error');
+                                                            }
+                                                        }}
                                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-xs font-semibold hover:bg-amber-100 transition-colors"
                                                     >
                                                         <Download size={13} />
                                                         Unduh
-                                                    </a>
+                                                    </button>
                                                 ) : (
                                                     <span className="text-gray-300 text-xs">-</span>
                                                 )}

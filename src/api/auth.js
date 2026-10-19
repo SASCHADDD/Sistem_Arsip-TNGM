@@ -43,6 +43,10 @@ export const changePassword = async (oldPassword, newPassword) => {
             oldPassword,
             newPassword
         });
+        if (response.data.token) {
+            const tokenKey = localStorage.getItem('eksternal_token') ? 'eksternal_token' : 'token';
+            localStorage.setItem(tokenKey, response.data.token);
+        }
         return response.data;
     } catch (error) {
         throw error.response?.data?.message || 'Gagal mengubah password';

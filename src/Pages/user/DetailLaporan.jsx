@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import SidebarUser from "../../components/SidebarUser";
 import { ArrowLeft, Calendar, MapPin, FileText, Clock, CheckCircle, XCircle, AlertCircle, ExternalLink, Image as ImageIcon, Edit, MessageSquare, FileCheck, Loader2, Trash2 } from "lucide-react";
 import { getDetailLaporan, deleteLaporan } from "../../api/laporan";
+import { getProtectedFileReference } from "../../api/files";
 import Swal from 'sweetalert2';
 
 const DetailLaporan = () => {
@@ -100,11 +101,7 @@ const DetailLaporan = () => {
         if (!filename) return;
 
         try {
-            const baseUrl = import.meta.env.VITE_API_URL 
-                ? import.meta.env.VITE_API_URL.replace(/\/api$/, '') 
-                : 'http://localhost:3000';
-            
-            const fileUrl = `${baseUrl}/uploads/${folder}/${encodeURIComponent(filename)}`;
+            const fileUrl = getProtectedFileReference(folder, filename);
             navigate(`/preview-dokumen?url=${encodeURIComponent(fileUrl)}&name=${encodeURIComponent(filename)}`);
         } catch (error) {
             console.error('Preview error:', error);

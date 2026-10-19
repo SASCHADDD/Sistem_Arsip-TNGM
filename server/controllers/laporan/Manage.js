@@ -26,17 +26,17 @@ const inputArsipLama = async (req, res) => {
         res.status(201).json(result);
     } catch (error) {
         console.error('Input Arsip Lama Error:', error);
-        res.status(error.message.includes('lengkapi') ? 400 : 500).json({ message: error.message || 'Terjadi kesalahan saat menyimpan arsip' });
+        res.status(error.message.includes('akses') ? 403 : error.message.includes('lengkapi') ? 400 : 500).json({ message: error.message || 'Terjadi kesalahan saat menyimpan arsip' });
     }
 };
 
 const uploadSusulan = async (req, res) => {
     try {
-        const result = await ManageService.unggahPDFSusulan(req.params.id, req.params.source, req.files);
+        const result = await ManageService.unggahPDFSusulan(req.params.id, req.params.source, req.files, req.user);
         res.json(result);
     } catch (error) {
         console.error('Upload Susulan Error:', error);
-        res.status(error.message.includes('tidak valid') || error.message.includes('unggah') ? 400 : error.message.includes('ditemukan') ? 404 : 500).json({ message: error.message || 'Gagal menyusulkan file dokumen' });
+        res.status(error.message.includes('akses') ? 403 : error.message.includes('tidak valid') || error.message.includes('unggah') ? 400 : error.message.includes('ditemukan') ? 404 : 500).json({ message: error.message || 'Gagal menyusulkan file dokumen' });
     }
 };
 

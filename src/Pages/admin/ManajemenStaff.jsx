@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SidebarAdmin from "../../components/SidebarAdmin";
-import { Plus, Users, Search, ChevronRight, Loader2, Pencil, Trash2, FileDown, Power, UserCheck, UserX } from "lucide-react";
+import { Plus, Users, Search, ChevronRight, Loader2, Pencil, Trash2, FileDown, Power, UserCheck, UserX, Eye, EyeOff } from "lucide-react";
 import { getAllStaff, updateStaff, getStaffAssessmentRekap } from "../../api/user";
 import axios from "../../api/axios";
 import Swal from 'sweetalert2';
@@ -31,6 +31,7 @@ const ManajemenStaff = () => {
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formError, setFormError] = useState("");
+    const [showRegisterPassword, setShowRegisterPassword] = useState(false);
 
     // For dropdown options (assuming you need them if you have wilayah/resor)
     const [wilayahOptions, setWilayahOptions] = useState([]);
@@ -78,6 +79,7 @@ const ManajemenStaff = () => {
         try {
             await axios.post('/auth/register', formData);
             setIsRegisterModalOpen(false);
+            setShowRegisterPassword(false);
             setFormData({
                 nama: "",
                 email: "",
@@ -263,7 +265,10 @@ const ManajemenStaff = () => {
                             Ekspor Penilaian
                         </button>
                         <button
-                            onClick={() => setIsRegisterModalOpen(true)}
+                            onClick={() => {
+                                setShowRegisterPassword(false);
+                                setIsRegisterModalOpen(true);
+                            }}
                             className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-md"
                         >
                             <Plus size={20} />
@@ -424,7 +429,10 @@ const ManajemenStaff = () => {
                         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                             <h3 className="font-bold text-lg text-slate-800">Tambah Akun Staf</h3>
                             <button
-                                onClick={() => setIsRegisterModalOpen(false)}
+                                onClick={() => {
+                                    setIsRegisterModalOpen(false);
+                                    setShowRegisterPassword(false);
+                                }}
                                 className="text-gray-400 hover:text-gray-600 transition-colors"
                             >
                                 ✕
@@ -464,15 +472,26 @@ const ManajemenStaff = () => {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                                <input
-                                    type="password"
-                                    name="password"
-                                    required
-                                    minLength="6"
-                                    value={formData.password}
-                                    onChange={handleInputChange}
-                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all outline-none text-slate-900 font-medium"
-                                />
+                                <div className="relative">
+                                    <input
+                                        type={showRegisterPassword ? "text" : "password"}
+                                        name="password"
+                                        required
+                                        minLength="6"
+                                        value={formData.password}
+                                        onChange={handleInputChange}
+                                        className="w-full px-4 pr-12 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all outline-none text-slate-900 font-medium"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowRegisterPassword(show => !show)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                                        aria-label={showRegisterPassword ? "Sembunyikan password" : "Tampilkan password"}
+                                        title={showRegisterPassword ? "Sembunyikan password" : "Tampilkan password"}
+                                    >
+                                        {showRegisterPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -513,7 +532,10 @@ const ManajemenStaff = () => {
                             <div className="pt-2 flex justify-end gap-3 mt-4">
                                 <button
                                     type="button"
-                                    onClick={() => setIsRegisterModalOpen(false)}
+                                    onClick={() => {
+                                        setIsRegisterModalOpen(false);
+                                        setShowRegisterPassword(false);
+                                    }}
                                     className="px-5 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-xl transition-colors"
                                 >
                                     Batal

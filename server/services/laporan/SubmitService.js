@@ -76,7 +76,11 @@ const getKategoriId = async (jenisName) => {
 };
 
 const processLaporanEksternal = async (data, files, user) => {
-    const { nama, instansi, email, judul, jenis, wilayah, tanggalBerakhir, keterangan } = data;
+    if (user.role !== 'eksternal') throw new Error('Akses ditolak untuk akun ini.');
+    const { judul, jenis, wilayah, tanggalBerakhir, keterangan } = data;
+    const nama = user.nama;
+    const instansi = user.instansi;
+    const email = user.email;
     const fileDokumen = files && files['file'] ? files['file'][0].filename : null;
     const fileLampiran = files && files['hardfile'] ? files['hardfile'][0].filename : null;
 
@@ -120,7 +124,11 @@ const processLaporanEksternal = async (data, files, user) => {
 };
 
 const processLaporanMitra = async (data, files, user) => {
-    const { namaPic, namaMitra, nomorPks, email, judul, jenis, wilayah, tanggalBerakhir, keterangan } = data;
+    if (user.role !== 'mitra') throw new Error('Akses ditolak untuk akun ini.');
+    const { nomorPks, judul, jenis, wilayah, tanggalBerakhir, keterangan } = data;
+    const namaPic = user.nama;
+    const namaMitra = user.instansi;
+    const email = user.email;
     const fileDokumen = files && files['file'] ? files['file'][0].filename : null;
     const fileLampiran = files && files['hardfile'] ? files['hardfile'][0].filename : null;
 

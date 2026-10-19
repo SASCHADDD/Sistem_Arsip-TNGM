@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import SidebarAdmin from '../../components/SidebarAdmin';
 import { Search, Filter, Download, FileText, MapPin, Calendar, ChevronRight, Eye, Loader2, UploadCloud, FileDown } from 'lucide-react';
 import { getAllApprovedReports, getFormOptions } from '../../api/laporan';
+import { getProtectedFileReference } from '../../api/files';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -89,14 +90,11 @@ const DataLaporan = () => {
         return matchSearch && matchResor && matchTipe && matchDate;
     });
 
-    const handleDownload = async (filename, folder = 'laporan') => {
+    const handleDownload = (filename, folder = 'laporan') => {
         if (!filename) return;
         try {
-            const baseUrl = import.meta.env.VITE_API_URL
-                ? import.meta.env.VITE_API_URL.replace('/api', '')
-                : 'http://localhost:3000';
-            const fileUrl = `${baseUrl}/uploads/${folder}/${encodeURIComponent(filename)}`;
-            window.open(fileUrl, '_blank');
+            const fileUrl = getProtectedFileReference(folder, filename);
+            navigate(`/preview-dokumen?url=${encodeURIComponent(fileUrl)}&name=${encodeURIComponent(filename)}`);
         } catch (error) {
             console.error('Download error:', error);
         }

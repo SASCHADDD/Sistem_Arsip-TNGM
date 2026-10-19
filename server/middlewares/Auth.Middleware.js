@@ -1,66 +1,67 @@
-const jwt = require('jsonwebtoken'); // Mengimpor pustaka JSON Web Token (JWT) untuk membuat dan memverifikasi token keamanan login
+const jwt = require('jsonwebtoken');
+const { jwtSecret } = require('../config/jwt');
+const { Pengguna } = require('../models');
 
-// ==========================================
-// 1. MIDDLEWARE: VERIFIKASI TOKEN (verifyToken)
-// ==========================================
-// Fungsi ini bertugas sebagai "Satpam Pintu Depan" untuk setiap rute API yang bersifat rahasia/private.
-// Tujuannya adalah memastikan bahwa orang yang mengakses rute tersebut benar-benar sudah login dan punya "Karcis Masuk" (Token).
-const verifyToken = (req, res, next) => {
-    // 1. Ambil "Karcis Masuk" (Header Authorization) dari permintaan (request) user
+const verifyToken = async (req, res, next) => {
     const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ message: 'Token tidak ditemukan' });
 
-    // 2. Jika user sama sekali tidak membawa karcis (belum login)
-    if (!authHeader) {
-        // Tolak akses dengan status 401 (Unauthorized / Tidak Sah)
-        return res.status(401).json({ message: 'Token tidak ditemukan' });
+    const [scheme, token, ...extra] = authHeader.split(' ');
+    if (scheme?.toLowerCase() !== 'bearer' || !token || extra.length > 0) {
+        return res.status(401).json({ message: 'Format token tidak valid' });
     }
 
-    // 3. Biasanya format karcis itu bertuliskan "Bearer xxxxxxx-token-rahasia-xxxxxx".
-    // Kita pisahkan kalimatnya dengan spasi (split) dan ambil bagian token aslinya saja (indeks ke-[1]).
-    const token = authHeader.split(' ')[1];
+    let decoded;
+    try {
+        decoded = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] });
+    } catch (error) {
+        return res.status(401).json({ message: 'Token tidak valid atau sudah kedaluwarsa' });
+    }
+
+    if (!decoded || typeof decoded !== 'object' || !decoded.id) {
+        return res.status(401).json({ message: 'Token tidak valid' });
+    }
 
     try {
-        // 4. Proses Pengecekan Keaslian Karcis (Token)
-        // JWT akan mengecek apakah token ini valid, belum kadaluarsa, dan dibuat oleh server kita (cocok dengan secret key).
-        const decoded = jwt.verify(
-            token,
-            process.env.JWT_SECRET || 'secret_key_rahasia' // Kunci rahasia untuk membuka isi token. Sebaiknya ditaruh di .env
-        );
+        const user = await Pengguna.findByPk(decoded.id, {
+            attributes: ['id', 'nama', 'email', 'role', 'wilayah_id', 'resor_id', 'is_active', 'token_version']
+        });
+        if (!user || Number(user.is_active) !== 1) {
+            return res.status(401).json({ message: 'Akun tidak ditemukan atau telah dinonaktifkan' });
+        }
+        if (!Number.isInteger(decoded.token_version) || decoded.token_version !== Number(user.token_version)) {
+            return res.status(401).json({ message: 'Sesi telah dicabut. Silakan login kembali.' });
+        }
 
-        // 5. Jika token ASLI dan SAH, kita ambil data identitas user dari dalam token tersebut (seperti id, role, dll)
-        // Data ini kita titipkan ke dalam variabel `req.user` agar bisa dipakai oleh fungsi-fungsi berikutnya (Controller).
-        req.user = decoded;
-        
-        // 6. Silakan masuk! (Lanjut ke proses selanjutnya / Controller utama)
-        next();
+        req.user = {
+            id: user.id,
+            nama: user.nama,
+            email: user.email,
+            role: user.role,
+            wilayah_id: user.wilayah_id,
+            resor_id: user.resor_id
+        };
+        return next();
     } catch (error) {
-        // 7. Jika token PALSU, sudah KADALUARSA (Expired), atau RUSAK
-        // Tolak akses dengan status 403 (Forbidden / Dilarang Masuk)
-        return res.status(403).json({ message: 'Token tidak valid' });
+        console.error('Token user lookup error:', error);
+        return res.status(500).json({ message: 'Gagal memverifikasi akun pengguna' });
     }
 };
 
-// ==========================================
-// 2. MIDDLEWARE: OTORISASI PERAN (authorizeRoles)
-// ==========================================
-// Fungsi ini bertugas sebagai "Satpam Ruangan Khusus".
-// Setelah masuk pintu depan (verifyToken), satpam ini mengecek apakah JABATAN (ROLE) user tersebut
-// punya izin untuk masuk ke ruangan tertentu (misal: ruang khusus admin).
 const authorizeRoles = (...allowedRoles) => {
     return (req, res, next) => {
-        // Mengecek apakah "role / jabatan" user (yang tadi dititipkan di req.user oleh verifyToken) 
-        // TERDAFTAR dalam daftar jabatan yang diizinkan (allowedRoles).
-        
         if (!allowedRoles.includes(req.user.role)) {
-            // Jika jabatannya tidak ada di daftar (misal cuma 'staff' tapi mau masuk ruang 'admin_wilayah')
-            // Tolak akses dengan status 403 (Forbidden / Akses Ditolak)
             return res.status(403).json({ message: 'Akses ditolak' });
         }
-        
-        // Jika jabatannya SESUAI, Silakan masuk! Lanjut ke Controller.
         next();
     };
 };
 
-// Mengekspor kedua fungsi Satpam ini agar bisa dipakai (di-import) oleh file Routes (pengatur rute API)
-module.exports = { verifyToken, authorizeRoles };
+const requireWilayah = (req, res, next) => {
+    if (['admin_wilayah', 'kepala_wilayah'].includes(req.user.role) && !req.user.wilayah_id) {
+        return res.status(403).json({ message: 'Akun admin belum memiliki wilayah yang ditetapkan.' });
+    }
+    next();
+};
+
+module.exports = { verifyToken, authorizeRoles, requireWilayah };

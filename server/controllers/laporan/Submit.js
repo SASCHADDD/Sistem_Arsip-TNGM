@@ -18,6 +18,7 @@ const submitLaporanEksternal = async (req, res) => {
         res.status(201).json(result);
     } catch (error) {
         console.error('Submit Eksternal Error:', error);
+        if (error.message.includes('akses')) return res.status(403).json({ message: error.message });
         res.status(error.message.includes('wajib') ? 400 : 500).json({ message: error.message || 'Gagal mengajukan laporan eksternal, terjadi kesalahan di server.' });
     }
 };
@@ -28,6 +29,7 @@ const submitLaporanMitra = async (req, res) => {
         res.status(201).json(result);
     } catch (error) {
         console.error('Submit Mitra Error:', error);
+        if (error.message.includes('akses')) return res.status(403).json({ message: error.message });
         res.status(error.message.includes('wajib') ? 400 : 500).json({ message: error.message || 'Gagal mengajukan laporan mitra, terjadi kesalahan di server.' });
     }
 };

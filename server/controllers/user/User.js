@@ -1,12 +1,12 @@
 const bcrypt = require('bcrypt');
-const { Op } = require('sequelize');
+const { Op, literal } = require('sequelize');
 const { Pengguna, Wilayah, Resor, LaporanInternal, ActivityLog, sequelize } = require('../../models');
 
 const getAllStaff = async (req, res) => {
     try {
         const user = req.user;
         let whereClause = {
-            role: ['staff', 'admin_wilayah']
+            role: user.role === 'admin_balai' ? ['staff', 'admin_wilayah'] : 'staff'
         };
 
         if (user.role === 'admin_wilayah' || user.role === 'kepala_wilayah') {
@@ -15,7 +15,7 @@ const getAllStaff = async (req, res) => {
 
         const users = await Pengguna.findAll({
             where: whereClause,
-            attributes: ['id', 'nama', 'email', 'role', 'foto', 'is_active'],
+            attributes: ['id', 'nama', 'email', 'role', 'foto', 'is_active', 'wilayah_id', 'resor_id'],
             include: [
                 { model: Wilayah, as: 'wilayah_rel', attributes: ['nama_wilayah'] },
                 { model: Resor, as: 'resor_rel', attributes: ['nama_resor'] }
@@ -30,6 +30,8 @@ const getAllStaff = async (req, res) => {
             role: u.role,
             foto: u.foto,
             is_active: u.is_active,
+            wilayah_id: u.wilayah_id,
+            resor_id: u.resor_id,
             nama_wilayah: u.wilayah_rel ? u.wilayah_rel.nama_wilayah : null,
             nama_resor: u.resor_rel ? u.resor_rel.nama_resor : null
         }));
@@ -44,13 +46,21 @@ const getAllStaff = async (req, res) => {
 const getStaffDetail = async (req, res) => {
     try {
         const { id } = req.params;
+        const user = req.user;
 
-        if (req.user.role === 'staff' && parseInt(req.user.id) !== parseInt(id)) {
+        if (user.role === 'staff' && parseInt(user.id) !== parseInt(id)) {
             return res.status(403).json({ message: 'Anda tidak memiliki hak akses untuk melihat data staf lain.' });
         }
 
+        const profileWhere = {
+            id,
+            role: user.role === 'admin_balai' ? ['staff', 'admin_wilayah'] : 'staff'
+        };
+        if (user.role === 'admin_wilayah' || user.role === 'kepala_wilayah') {
+            profileWhere.wilayah_id = user.wilayah_id;
+        }
         const profile = await Pengguna.findOne({
-            where: { id, role: ['staff', 'admin_wilayah'] },
+            where: profileWhere,
             attributes: ['id', 'nama', 'email', 'role', 'foto', 'is_active', 'wilayah_id', 'resor_id'],
             include: [
                 { model: Wilayah, as: 'wilayah_rel', attributes: ['nama_wilayah'] },
@@ -120,6 +130,7 @@ const updateStaff = async (req, res) => {
     try {
         const { id } = req.params;
         const { nama, email, password, wilayah_id, resor_id, is_active } = req.body;
+        const user = req.user;
 
         const existingUserCheck = await Pengguna.findOne({
             where: { email, id: { [Op.ne]: id } }
@@ -129,13 +140,28 @@ const updateStaff = async (req, res) => {
             return res.status(400).json({ message: 'Email sudah terdaftar oleh pengguna lain' });
         }
 
+        const targetWhere = { id, role: 'staff' };
+        if (user.role === 'admin_wilayah' || user.role === 'kepala_wilayah') {
+            targetWhere.wilayah_id = user.wilayah_id;
+            if (Number(wilayah_id) !== Number(user.wilayah_id)) {
+                return res.status(403).json({ message: 'Anda hanya dapat menempatkan staf di wilayah Anda.' });
+            }
+        }
         const oldUser = await Pengguna.findOne({
-            where: { id, role: 'staff' },
-            attributes: ['wilayah_id', 'resor_id']
+            where: targetWhere,
+            attributes: ['wilayah_id', 'resor_id', 'is_active', 'token_version']
         });
 
         if (!oldUser) {
             return res.status(404).json({ message: 'Staff tidak ditemukan' });
+        }
+
+        if (resor_id) {
+            const resor = await Resor.findByPk(resor_id);
+            const targetWilayahId = wilayah_id ? parseInt(wilayah_id) : null;
+            if (!resor || Number(resor.wilayah_id) !== Number(targetWilayahId)) {
+                return res.status(400).json({ message: 'Resor tidak sesuai dengan wilayah yang dipilih.' });
+            }
         }
 
         let isMutated = false;
@@ -144,19 +170,25 @@ const updateStaff = async (req, res) => {
             isMutated = true;
         }
 
+        const nextActiveState = is_active !== undefined ? (is_active ? 1 : 0) : Number(oldUser.is_active);
+        const passwordChanged = Boolean(password && password.trim() !== '');
+        const accountDeactivated = Number(oldUser.is_active) !== 0 && nextActiveState === 0;
         let updateData = {
             nama, email,
             wilayah_id: wilayah_id ? parseInt(wilayah_id) : null,
             resor_id: resor_id ? parseInt(resor_id) : null,
-            is_active: is_active !== undefined ? (is_active ? 1 : 0) : 1
+            is_active: nextActiveState
         };
 
-        if (password && password.trim() !== '') {
+        if (passwordChanged) {
             updateData.password = await bcrypt.hash(password, 10);
+        }
+        if (passwordChanged || accountDeactivated) {
+            updateData.token_version = literal('token_version + 1');
         }
 
         const [affectedRows] = await Pengguna.update(updateData, {
-            where: { id, role: 'staff' }
+            where: targetWhere
         });
 
         if (affectedRows === 0) {
@@ -188,8 +220,15 @@ const updateStaff = async (req, res) => {
 const deleteStaff = async (req, res) => {
     try {
         const { id } = req.params;
+        const where = {
+            id,
+            role: req.user.role === 'admin_balai' ? ['staff', 'admin_wilayah'] : 'staff'
+        };
+        if (req.user.role === 'admin_wilayah' || req.user.role === 'kepala_wilayah') {
+            where.wilayah_id = req.user.wilayah_id;
+        }
         const affectedRows = await Pengguna.destroy({
-            where: { id, role: ['staff', 'admin_wilayah'] }
+            where
         });
 
         if (affectedRows === 0) {
@@ -206,7 +245,7 @@ const deleteStaff = async (req, res) => {
 const getStaffAssessmentRekap = async (req, res) => {
     try {
         const user = req.user;
-        let whereClause = { role: ['staff', 'admin_wilayah'] };
+        let whereClause = { role: user.role === 'admin_balai' ? ['staff', 'admin_wilayah'] : 'staff' };
 
         if (user.role === 'admin_wilayah' || user.role === 'kepala_wilayah') {
             whereClause.wilayah_id = user.wilayah_id;

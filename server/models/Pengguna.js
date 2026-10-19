@@ -44,6 +44,11 @@ const Pengguna = sequelize.define('Pengguna', {
     type: DataTypes.TINYINT,
     allowNull: false,
     defaultValue: 1,
+  },
+  token_version: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    defaultValue: 0,
   }
 }, {
   tableName: 'pengguna',

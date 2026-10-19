@@ -12,7 +12,7 @@ const verifyLaporan = async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error('Verify Laporan Error:', error);
-        res.status(error.message.includes('tidak ditemukan') || error.message.includes('tidak valid') ? 404 : 500).json({ message: error.message || 'Gagal memverifikasi laporan' });
+        res.status(error.message.includes('akses') ? 403 : error.message.includes('tidak ditemukan') ? 404 : error.message.includes('tidak valid') || error.message.includes('sudah diproses') ? 400 : 500).json({ message: error.message || 'Gagal memverifikasi laporan' });
     }
 };
 

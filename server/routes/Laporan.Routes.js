@@ -9,35 +9,40 @@ const dashboardController = require('../controllers/laporan/Dashboard');
 const activityController = require('../controllers/laporan/Activity');
 const formController = require('../controllers/laporan/Form');
 
-const { verifyToken } = require('../middlewares/Auth.Middleware');
-const { configureUpload, handleUpload, handleUploadEksternal } = require('../middlewares/Upload.Middleware');
+const { verifyToken, authorizeRoles, requireWilayah } = require('../middlewares/Auth.Middleware');
+const { handleUpload, handleUploadEksternal } = require('../middlewares/Upload.Middleware');
+const { ensureInternalReportOwner, ensureExternalReportOwner, ensureAdminReportScope } = require('../authorization/ReportAccess.Middleware');
+const adminRoles = authorizeRoles('admin_balai', 'admin_wilayah', 'kepala_wilayah');
+const staffRole = authorizeRoles('staff');
+const eksternalRole = authorizeRoles('eksternal');
+const mitraRole = authorizeRoles('mitra');
 
 // --- PUBLIC ROUTES (Form options) ---
 router.get('/form-options', formController.getFormOptions);
 
 // --- AUTHENTICATED ROUTES Eksternal & Mitra (wajib login) ---
-router.post('/submit-eksternal', verifyToken, handleUploadEksternal, submitController.submitLaporanEksternal);
-router.post('/submit-mitra', verifyToken, handleUploadEksternal, submitController.submitLaporanMitra);
-router.put('/eksternal/:id', verifyToken, handleUploadEksternal, manageController.updateLaporanEksternal);
-router.get('/riwayat-eksternal', verifyToken, riwayatController.getRiwayatEksternal);
-router.get('/riwayat-mitra', verifyToken, riwayatController.getRiwayatMitra);
+router.post('/submit-eksternal', verifyToken, eksternalRole, handleUploadEksternal, submitController.submitLaporanEksternal);
+router.post('/submit-mitra', verifyToken, mitraRole, handleUploadEksternal, submitController.submitLaporanMitra);
+router.put('/eksternal/:id', verifyToken, authorizeRoles('eksternal', 'mitra'), ensureExternalReportOwner, handleUploadEksternal, manageController.updateLaporanEksternal);
+router.get('/riwayat-eksternal', verifyToken, eksternalRole, riwayatController.getRiwayatEksternal);
+router.get('/riwayat-mitra', verifyToken, mitraRole, riwayatController.getRiwayatMitra);
 
 // --- USER ROUTES ---
-router.post('/submit', verifyToken, handleUpload, submitController.submitLaporan);
-router.get('/stats', verifyToken, dashboardController.getUserDashboardStats);
-router.get('/activity', verifyToken, activityController.getUserActivityLog);
-router.get('/riwayat', verifyToken, riwayatController.getRiwayatLaporan);
-router.get('/detail/:id', verifyToken, detailController.getdetaillaporan);
-router.delete('/:id', verifyToken, manageController.deleteLaporan);
-router.put('/:id', verifyToken, handleUpload, manageController.updateLaporan);
+router.post('/submit', verifyToken, staffRole, handleUpload, submitController.submitLaporan);
+router.get('/stats', verifyToken, staffRole, dashboardController.getUserDashboardStats);
+router.get('/activity', verifyToken, staffRole, activityController.getUserActivityLog);
+router.get('/riwayat', verifyToken, staffRole, riwayatController.getRiwayatLaporan);
+router.get('/detail/:id', verifyToken, authorizeRoles('staff', 'admin_balai', 'admin_wilayah', 'kepala_wilayah', 'eksternal', 'mitra'), requireWilayah, detailController.getdetaillaporan);
+router.delete('/:id', verifyToken, staffRole, manageController.deleteLaporan);
+router.put('/:id', verifyToken, staffRole, ensureInternalReportOwner, handleUpload, manageController.updateLaporan);
 
 // --- ADMIN ROUTES ---
-router.post('/admin/input-arsip', verifyToken, handleUpload, manageController.inputArsipLama);
-router.put('/admin/upload-susulan/:source/:id', verifyToken, handleUpload, manageController.uploadSusulan);
-router.get('/admin/stats', verifyToken, dashboardController.getAdminDashboardStats);
-router.get('/admin/activity', verifyToken, activityController.getAdminActivityLog);
-router.put('/verify/:id', verifyToken, verifikasiController.verifyLaporan);
-router.get('/admin/approved', verifyToken, verifikasiController.getAllApprovedReports);
-router.get('/pending', verifyToken, verifikasiController.getAllPendingReports);
+router.post('/admin/input-arsip', verifyToken, adminRoles, requireWilayah, handleUpload, manageController.inputArsipLama);
+router.put('/admin/upload-susulan/:source/:id', verifyToken, adminRoles, requireWilayah, ensureAdminReportScope, handleUpload, manageController.uploadSusulan);
+router.get('/admin/stats', verifyToken, adminRoles, requireWilayah, dashboardController.getAdminDashboardStats);
+router.get('/admin/activity', verifyToken, adminRoles, requireWilayah, activityController.getAdminActivityLog);
+router.put('/verify/:id', verifyToken, adminRoles, requireWilayah, verifikasiController.verifyLaporan);
+router.get('/admin/approved', verifyToken, adminRoles, requireWilayah, verifikasiController.getAllApprovedReports);
+router.get('/pending', verifyToken, adminRoles, requireWilayah, verifikasiController.getAllPendingReports);
 
 module.exports = router;

@@ -2,10 +2,11 @@ const AuthService = require('../../services/auth/AuthService');
 
 const register = async (req, res) => {
     try {
-        const data = await AuthService.authRegister(req.body);
+        const data = await AuthService.authRegister(req.body, req.user);
         res.status(201).json({ message: 'Registrasi staff berhasil', data });
     } catch (error) {
         if (error.message === 'Email sudah terdaftar') return res.status(400).json({ message: error.message });
+        if (error.message.includes('Akses ditolak')) return res.status(403).json({ message: error.message });
         console.error(error);
         res.status(500).json({ error: 'Terjadi kesalahan pada server' });
     }
@@ -57,8 +58,8 @@ const login = async (req, res) => {
 
 const changePassword = async (req, res) => {
     try {
-        await AuthService.authChangePassword(req.user.id, req.body);
-        res.json({ message: 'Password berhasil diubah' });
+        const result = await AuthService.authChangePassword(req.user.id, req.body);
+        res.json({ message: 'Password berhasil diubah', ...result });
     } catch (error) {
         console.error('Change Password Error:', error);
         if (error.message.includes('wajib') || error.message.includes('sesuai')) return res.status(400).json({ message: error.message });
@@ -92,6 +93,7 @@ const loginEksternal = async (req, res) => {
         console.error('Login Eksternal Error:', error);
         if (error.message.includes('wajib')) return res.status(400).json({ message: error.message });
         if (error.message.includes('salah')) return res.status(401).json({ message: error.message });
+        if (error.message.includes('dinonaktifkan')) return res.status(403).json({ message: error.message });
         res.status(500).json({ message: 'Terjadi kesalahan pada server' });
     }
 };

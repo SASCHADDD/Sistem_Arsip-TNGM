@@ -1,13 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/user/User');
-const { verifyToken, authorizeRoles } = require('../middlewares/Auth.Middleware');
+const { verifyToken, authorizeRoles, requireWilayah } = require('../middlewares/Auth.Middleware');
 
 // Route untuk mendapatkan daftar semua staf
 router.get(
     '/staff',
     verifyToken,
     authorizeRoles('admin_balai', 'admin_wilayah', 'kepala_wilayah'),
+    requireWilayah,
     userController.getAllStaff
 );
 
@@ -16,6 +17,7 @@ router.get(
     '/staff-rekap',
     verifyToken,
     authorizeRoles('admin_balai', 'admin_wilayah', 'kepala_wilayah'),
+    requireWilayah,
     userController.getStaffAssessmentRekap
 );
 
@@ -24,6 +26,7 @@ router.get(
     '/staff/:id',
     verifyToken,
     authorizeRoles('admin_balai', 'admin_wilayah', 'kepala_wilayah', 'staff'),
+    requireWilayah,
     userController.getStaffDetail
 );
 
@@ -32,6 +35,7 @@ router.put(
     '/staff/:id',
     verifyToken,
     authorizeRoles('admin_balai', 'admin_wilayah', 'kepala_wilayah'),
+    requireWilayah,
     userController.updateStaff
 );
 
@@ -40,6 +44,7 @@ router.delete(
     '/staff/:id',
     verifyToken,
     authorizeRoles('admin_balai', 'admin_wilayah', 'kepala_wilayah'),
+    requireWilayah,
     userController.deleteStaff
 );
 

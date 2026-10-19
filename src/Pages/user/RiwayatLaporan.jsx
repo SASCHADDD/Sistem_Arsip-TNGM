@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import SidebarUser from "../../components/SidebarUser";
 import { Search, FileText, MapPin, Calendar, Eye, Loader2, AlertCircle, Download } from "lucide-react";
 import { getRiwayatLaporan } from "../../api/laporan";
+import { getProtectedFileReference } from "../../api/files";
 
 const RiwayatLaporan = () => {
     const navigate = useNavigate();
@@ -37,6 +38,10 @@ const RiwayatLaporan = () => {
     // Year options: from 2010 to current year
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: currentYear - 2010 + 1 }, (_, i) => currentYear - i);
+    const openPreview = (filename, folder) => {
+        const fileReference = getProtectedFileReference(folder, filename);
+        navigate(`/preview-dokumen?url=${encodeURIComponent(fileReference)}&name=${encodeURIComponent(filename)}`);
+    };
     const months = [
         { value: '01', label: 'Januari' },
         { value: '02', label: 'Februari' },
@@ -229,10 +234,7 @@ const RiwayatLaporan = () => {
                                                             <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    const baseUrl = import.meta.env.VITE_API_URL
-                                                                        ? import.meta.env.VITE_API_URL.replace('/api', '')
-                                                                        : 'http://localhost:3000';
-                                                                    window.open(`${baseUrl}/uploads/laporan/${encodeURIComponent(report.file_laporan)}`, '_blank');
+                                                                    openPreview(report.file_laporan, 'laporan');
                                                                 }}
                                                                 className="p-2.5 text-orange-600 bg-orange-50 rounded-xl hover:bg-orange-600 hover:text-white transition-all transform active:scale-95 shadow-sm"
                                                                 title="Download File Laporan"
@@ -245,10 +247,7 @@ const RiwayatLaporan = () => {
                                                             <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    const baseUrl = import.meta.env.VITE_API_URL
-                                                                        ? import.meta.env.VITE_API_URL.replace('/api', '')
-                                                                        : 'http://localhost:3000';
-                                                                    window.open(`${baseUrl}/uploads/output/${encodeURIComponent(report.file_output)}`, '_blank');
+                                                                    openPreview(report.file_output, 'output');
                                                                 }}
                                                                 className="p-2.5 text-green-600 bg-green-50 rounded-xl hover:bg-green-600 hover:text-white transition-all transform active:scale-95 shadow-sm"
                                                                 title="Download Tanda Terima"

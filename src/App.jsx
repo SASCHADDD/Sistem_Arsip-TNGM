@@ -21,10 +21,29 @@ import InputArsipLama from "./Pages/admin/InputArsipLama.jsx";
 import DetailAktivitas from "./Pages/DetailAktivitas.jsx";
 import PreviewDokumen from "./Pages/PreviewDokumen.jsx";
 
+const INTERNAL_ROLES = ['admin_balai', 'admin_wilayah', 'kepala_wilayah', 'staff'];
+const ADMIN_ROLES = ['admin_balai', 'admin_wilayah', 'kepala_wilayah'];
 
-const PrivateRoute = () => {
+const PrivateRoute = ({ allowedRoles = INTERNAL_ROLES }) => {
   const token = localStorage.getItem('token');
-  return token ? <Outlet /> : <Navigate to="/Login" replace />;
+  if (!token) return <Navigate to="/Login" replace />;
+
+  let user;
+  try {
+    user = JSON.parse(localStorage.getItem('user') || 'null');
+  } catch {
+    return <Navigate to="/Login" replace />;
+  }
+
+  if (!user || !INTERNAL_ROLES.includes(user.role)) {
+    return <Navigate to="/Login" replace />;
+  }
+
+  if (!allowedRoles.includes(user.role)) {
+    return <Navigate to={user.role === 'staff' ? '/user/dashboard' : '/admin/dashboard'} replace />;
+  }
+
+  return <Outlet />;
 };
 
 function App() {
@@ -46,21 +65,25 @@ function App() {
           <Route path='/mitra/dashboard' element={<DashboardEksternal />} />
 
           {/* private route*/}
-          <Route element={<PrivateRoute />}>
+          <Route element={<PrivateRoute allowedRoles={INTERNAL_ROLES} />}>
             <Route path="/preview-dokumen" element={<PreviewDokumen />} />
-            <Route path="/admin/dashboard" element={<DashboardAdmin />} />
-            <Route path='/user/dashboard' element={<DashboardUser />} />
-            <Route path="/user/riwayat-laporan" element={<RiwayatLaporan />} />
-            <Route path="/user/upload-laporan" element={<UploadLaporan />} />
-            <Route path="/user/laporan/edit/:id" element={<UploadLaporan />} />
-            <Route path="/user/detail-laporan/:id" element={<DetailLaporan />} />
-            <Route path='/admin/verifikasi-laporan' element={<VerifikasiLaporan />} />
-            <Route path='/admin/detail-laporan/:id' element={<DetailLaporanAdmin />} />
-            <Route path='/admin/DataLaporan' element={<DataLaporan />} />
-            <Route path='/admin/manajemen-staff' element={<ManajemenStaff />} />
-            <Route path='/admin/akun-staff/:id' element={<DetailStaffAdmin />} />
-            <Route path='/admin/input-arsip' element={<InputArsipLama />} />
-            <Route path='/admin/detail-aktivitas' element={<DetailAktivitas />} />
+            <Route element={<PrivateRoute allowedRoles={ADMIN_ROLES} />}>
+              <Route path="/admin/dashboard" element={<DashboardAdmin />} />
+              <Route path='/admin/verifikasi-laporan' element={<VerifikasiLaporan />} />
+              <Route path='/admin/detail-laporan/:id' element={<DetailLaporanAdmin />} />
+              <Route path='/admin/DataLaporan' element={<DataLaporan />} />
+              <Route path='/admin/manajemen-staff' element={<ManajemenStaff />} />
+              <Route path='/admin/akun-staff/:id' element={<DetailStaffAdmin />} />
+              <Route path='/admin/input-arsip' element={<InputArsipLama />} />
+              <Route path='/admin/detail-aktivitas' element={<DetailAktivitas />} />
+            </Route>
+            <Route element={<PrivateRoute allowedRoles={['staff']} />}>
+              <Route path='/user/dashboard' element={<DashboardUser />} />
+              <Route path="/user/riwayat-laporan" element={<RiwayatLaporan />} />
+              <Route path="/user/upload-laporan" element={<UploadLaporan />} />
+              <Route path="/user/laporan/edit/:id" element={<UploadLaporan />} />
+              <Route path="/user/detail-laporan/:id" element={<DetailLaporan />} />
+            </Route>
           </Route>
         </Routes>
       </Router>

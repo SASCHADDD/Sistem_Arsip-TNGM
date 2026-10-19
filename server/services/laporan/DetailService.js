@@ -3,7 +3,24 @@ const { LaporanInternal, LaporanEksternal, Kategori, Wilayah, Resor, Pengguna } 
 
 const getDetail = async (id, source, user) => {
     if (source === 'eksternal' || source === 'mitra') {
-        const row = await LaporanEksternal.findByPk(id, {
+        const whereClause = { id };
+        const adminRoles = ['admin_balai', 'admin_wilayah', 'kepala_wilayah'];
+
+        if (user.role === 'mitra') {
+            whereClause.jenis_pengirim = 'mitra';
+            whereClause.email_pengirim = user.email;
+        } else if (user.role === 'eksternal') {
+            whereClause.jenis_pengirim = { [Op.in]: ['eksternal', 'pengaju simaksi'] };
+            whereClause.email_pengirim = user.email;
+        } else if (adminRoles.includes(user.role)) {
+            if (user.role !== 'admin_balai') whereClause.wilayah_id = user.wilayah_id;
+            if (source === 'mitra') whereClause.jenis_pengirim = 'mitra';
+        } else {
+            throw new Error('NOT_FOUND_OR_FORBIDDEN');
+        }
+
+        const row = await LaporanEksternal.findOne({
+            where: whereClause,
             include: [
                 { model: Kategori, as: 'kategori_rel', attributes: ['nama_kategori'] },
                 { model: Wilayah, as: 'wilayah_rel', attributes: ['nama_wilayah'] },
@@ -30,9 +47,15 @@ const getDetail = async (id, source, user) => {
         };
     }
 
-    let whereClause = { id };
-    if (!user.role.includes('admin') && user.role !== 'kepala_wilayah') {
+    const whereClause = { id };
+    const adminRoles = ['admin_balai', 'admin_wilayah', 'kepala_wilayah'];
+
+    if (user.role === 'staff') {
         whereClause.created_by = user.id;
+    } else if (user.role === 'admin_wilayah' || user.role === 'kepala_wilayah') {
+        whereClause.wilayah_id = user.wilayah_id;
+    } else if (!adminRoles.includes(user.role)) {
+        throw new Error('NOT_FOUND_OR_FORBIDDEN');
     }
 
     const row = await LaporanInternal.findOne({
